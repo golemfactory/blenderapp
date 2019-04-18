@@ -14,17 +14,28 @@ jobs:
              curl -Ls http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2 | tar -xjv
              sudo mv blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /usr/local/bin/blender
        - run:
-           name: Install Python3.6 and pip
+           name: Install Python3.6
            command: |
              sudo apt-get update
              sudo apt-get install software-properties-common
              sudo add-apt-repository -y ppa:jonathonf/python-3.6
              sudo apt-get update
              sudo apt-get install python3.6 python3.6-dev
-             wget https://bootstrap.pypa.io/get-pip.py
-             sudo python3.6 get-pip.py
+       - run:
+           name: Prepare venv with requirements
+           command: |
+             python3.6 -m venv .venv
+             . .venv/bin/activate
+             pip install -r requirements.txt
+       - run:
+           name: Check versions
+           command: |
+             echo $PATH
+             python --version
+             pip --version
+             docker --version
+             blender --version
        - run:
            name: Run tests
            command: |
-             sudo pip3.6 install -r requirements.txt
-             sudo python3.6 -m pytest
+             python -m pytest
