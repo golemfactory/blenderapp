@@ -11,6 +11,9 @@ from golem_blender_app.commands.get_subtask import (
     get_next_subtask as get_next_subtask_impl
 )
 from golem_blender_app.commands.verify import verify as verify_impl
+from golem_blender_app.commands.restart_task import (
+    restart_task as restart_task_impl
+)
 
 
 WORK_DIR = Path('/golem/work')
@@ -70,6 +73,14 @@ def benchmark():
     benchmark_impl(
         WORK_DIR,
         BENCHMARK_DIR,
+    )
+
+
+@main.command()
+def restart_task():
+    restart_task_impl(
+        WORK_DIR,
+        RESULTS_DIR,
     )
 
 
