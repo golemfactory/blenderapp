@@ -7,7 +7,7 @@ import Imath
 
 # converting .exr file to .png if user gave .exr file as a rendered scene
 def ConvertEXRToPNG(exrfile, pngfile):
-    File = OpenEXR.InputFile(exrfile)
+    File = OpenEXR.InputFile(str(exrfile))
     PixType = Imath.PixelType(Imath.PixelType.FLOAT)
     DW = File.header()['dataWindow']
     Size = (DW.max.x - DW.min.x + 1, DW.max.y - DW.min.y + 1)

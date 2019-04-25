@@ -103,10 +103,13 @@ class SimulationBase(abc.ABC):
         )
 
     @staticmethod
-    def _get_cube_params(subtasks_count: int, frames: str):
+    def _get_cube_params(
+            subtasks_count: int,
+            frames: str,
+            output_format: str="png"):
         return {
             "subtasks_count": subtasks_count,
-            "format": "png",
+            "format": output_format,
             "resolution": [1000, 600],
             "frames": frames,
             "scene_file": "cube.blend",
@@ -168,3 +171,21 @@ class SimulationBase(abc.ABC):
             result_file = \
                 req_results / f'result{frame:04d}.{task_params["format"]}'
             assert result_file.exists()
+
+    def test_one_subtasks_one_frame(self, tmpdir):
+        self._simulate(self._get_cube_params(1, "1"), tmpdir, [1])
+
+    def test_one_subtasks_three_frames(self, tmpdir):
+        self._simulate(self._get_cube_params(1, "2-3;8"), tmpdir, [2, 3, 8])
+
+    def test_two_subtasks_one_frame_png(self, tmpdir):
+        self._simulate(self._get_cube_params(2, "5"), tmpdir, [5])
+
+    def test_two_subtasks_one_frame_exr(self, tmpdir):
+        self._simulate(self._get_cube_params(2, "5", "exr"), tmpdir, [5])
+
+    def test_two_subtasks_two_frames(self, tmpdir):
+        self._simulate(self._get_cube_params(2, "5;9"), tmpdir, [5, 9])
+
+    def test_four_subtasks_two_frames(self, tmpdir):
+        self._simulate(self._get_cube_params(4, "6-7"), tmpdir, [6, 7])
