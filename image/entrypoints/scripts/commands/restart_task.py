@@ -31,14 +31,14 @@ def restart_task(
         with open(old_work_dir / 'task_params.json', 'r') as f:
             task_params = json.load(f)
         for subtask_num in finished_subtasks:
-            utils.set_subtask_status(db, subtask_num, utils.SubtaskStatus.FINISHED)
+            utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
             subtask_glob = str(old_work_dir) + f'/subtask{subtask_num}-*/'
             for file in glob.glob(subtask_glob):
                 old_subtask_dir  = Path(file)
                 old_subtask_result_dir = old_subtask_dir / 'results'
                 new_subtask_name = old_subtask_dir.name
                 new_subtask_dir = new_work_dir / new_subtask_name
-                new_subtask_dir.mkdir() 
+                new_subtask_dir.mkdir()
                 new_subtask_result_dir = new_subtask_dir / 'results'
                 shutil.copytree(old_subtask_result_dir, new_subtask_result_dir)
                 with open(old_work_dir / f'{new_subtask_name}.json', 'r') as f:
@@ -48,6 +48,7 @@ def restart_task(
                     subtask_num,
                     task_params,
                     params,
+                    new_work_dir,
                     new_subtask_result_dir,
                     new_results_dir,
                 )

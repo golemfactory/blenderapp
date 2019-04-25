@@ -62,6 +62,16 @@ def get_subtasks_statuses(
     }
 
 
+def get_subtasks_with_status(db, status: SubtaskStatus) -> List[int]:
+    cursor = db.cursor()
+    cursor.execute(
+        "SELECT num FROM subtask_status WHERE status = ?",
+        (status.value,),
+    )
+    rows = cursor.fetchall()
+    return list(map(lambda r: r[0], rows))
+
+
 def get_next_pending_subtask(db) -> Optional[int]:
     cursor = db.cursor()
     cursor.execute(
