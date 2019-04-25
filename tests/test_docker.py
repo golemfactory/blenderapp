@@ -4,7 +4,7 @@ from typing import Optional
 import docker
 import pytest
 
-from simulationbase import SimulationBase
+from .simulationbase import SimulationBase
 
 TAG = 'blenderapp_test'
 

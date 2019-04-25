@@ -33,7 +33,7 @@ def verify(
     subtask_num = utils.get_subtask_num_from_id(subtask_id)
 
     with utils.get_db_connection(work_dir) as db:
-        utils.set_subtask_status(db, subtask_num, utils.SubtaskStatus.VERIFYING)
+        utils.update_subtask(db, subtask_num, utils.SubtaskStatus.VERIFYING)
         verdict = verificator.verify(
             list(map(lambda f: subtask_results_dir / f, os.listdir(subtask_results_dir))),  # noqa
             params['borders'],
@@ -51,18 +51,19 @@ def verify(
         print("Verdict:", verdict)
         _save_verdict(work_dir, subtask_id, verdict)
         if not verdict:
-            utils.set_subtask_status(
+            utils.update_subtask(
                 db,
                 subtask_num,
                 utils.SubtaskStatus.PENDING,
             )
             return
-        utils.set_subtask_status(db, subtask_num, utils.SubtaskStatus.FINISHED)
+        utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
             subtask_num,
             task_params,
             params,
+            work_dir,
             subtask_results_dir,
             results_dir,
         )
@@ -78,6 +79,7 @@ def _collect_results(
         subtask_num: int,
         task_params: dict,
         params: dict,
+        work_dir: Path,
         subtask_results_dir: Path,
         results_dir: Path) -> None:
     frames = utils.string_to_frames(task_params['frames'])
@@ -94,19 +96,21 @@ def _collect_results(
 
     frame_id = subtask_num // parts
     frame = frames[frame_id]
-    subtask_ids = list(range(frame_id * parts, (frame_id + 1) * parts))
-    finished_subtasks = \
-        utils.get_subtasks_with_status(db, utils.SubtaskStatus.FINISHED)
-    if not all([i in finished_subtasks for i in subtask_ids]):
+    subtasks_nums = list(range(frame_id * parts, (frame_id + 1) * parts))
+    subtasks_statuses = utils.get_subtasks_statuses(db, subtasks_nums)
+    all_finished = all([
+        s[0] == utils.SubtaskStatus.FINISHED for s in subtasks_statuses.values()
+    ])
+    if not all_finished:
         return
 
     collector = RenderingTaskCollector(
         width=params['resolution'][0],
         height=params['resolution'][1],
     )
-    for i in subtask_ids[::-1]:
+    for i in subtasks_nums[::-1]:
         collector.add_img_file(
-            str(subtask_results_dir / f'result{frame:04d}.{out_format}'),
+            str(work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results' / f'result{frame:04d}.{out_format}'),  # noqa
         )
     with collector.finalize() as image:
         image.save_with_extension(

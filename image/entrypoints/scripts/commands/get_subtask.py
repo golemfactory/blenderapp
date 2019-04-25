@@ -15,8 +15,14 @@ def get_next_subtask(
         subtask_num = utils.get_next_pending_subtask(db)
         if subtask_num is None:
             raise Exception('No available subtasks at the moment')
-        print(f'Subtask number: {subtask_num}')
-        utils.set_subtask_status(db, subtask_num, utils.SubtaskStatus.COMPUTING)
+        subtask_id = utils.gen_subtask_id(subtask_num)
+        print(f'Subtask number: {subtask_num}, id: {subtask_id}')
+        utils.update_subtask(
+            db,
+            subtask_num,
+            utils.SubtaskStatus.COMPUTING,
+            subtask_id,
+        )
 
     all_frames = utils.string_to_frames(task_params['frames'])
 
@@ -27,9 +33,6 @@ def get_next_subtask(
     )
     min_y = (subtask_num % parts) / parts
     max_y = (subtask_num % parts + 1) / parts
-
-    subtask_id = utils.gen_subtask_id(subtask_num)
-    print(f'Creating subtask {subtask_id}')
 
     subtask_params = {
         "scene_file": task_params['scene_file'],
