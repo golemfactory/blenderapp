@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 import contextlib
 import enum
 import random
@@ -19,31 +19,47 @@ def get_db_connection(work_dir: Path):
 
 def init_tables(db, subtasks_count: int) -> None:
     with db:
-        db.execute('CREATE TABLE subtask_status(num int, status text)')
+        db.execute(
+            'CREATE TABLE subtask_status(num int, status text, unique_id text)')
         values = \
             ((x, SubtaskStatus.PENDING.value) for x in range(subtasks_count))
         db.executemany(
-            'INSERT INTO subtask_status VALUES (?,?)',
+            'INSERT INTO subtask_status(num, status) VALUES (?,?)',
             values,
         )
 
 
-def set_subtask_status(db, subtask_num: int, status: SubtaskStatus):
+def update_subtask(
+        db,
+        subtask_num: int,
+        status: SubtaskStatus,
+        unique_id: Optional[str] = None) -> None:
     with db:
         db.execute(
             'UPDATE subtask_status SET status = ? WHERE num = ?',
             (status.value, subtask_num),
         )
+        if unique_id:
+            db.execute(
+                'UPDATE subtask_status SET unique_id = ? WHERE num = ?',
+                (unique_id, subtask_num),
+            )
 
 
-def get_subtasks_with_status(db, status: SubtaskStatus) -> List[int]:
+def get_subtasks_statuses(
+        db,
+        nums: List[int]) -> Dict[int, Tuple[SubtaskStatus, str]]:
+    set_format = ','.join(['?'] * len(nums))
     cursor = db.cursor()
     cursor.execute(
-        "SELECT num FROM subtask_status WHERE status = ?",
-        (status.value,),
+        "SELECT num, status, unique_id FROM subtask_status WHERE num IN "
+        f"({set_format})",
+        (*nums,),
     )
-    rows = cursor.fetchall()
-    return list(map(lambda r: r[0], rows))
+    values = cursor.fetchall()
+    return {
+        v[0]: (SubtaskStatus(v[1]), v[2]) for v in values
+    }
 
 
 def get_next_pending_subtask(db) -> Optional[int]:

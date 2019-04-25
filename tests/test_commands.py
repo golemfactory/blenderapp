@@ -8,7 +8,7 @@ from image.entrypoints.scripts.commands.get_subtask import get_next_subtask
 from image.entrypoints.scripts.commands.compute import compute
 from image.entrypoints.scripts.commands.verify import verify
 
-from simulationbase import SimulationBase
+from .simulationbase import SimulationBase
 
 
 @pytest.mark.skipif(

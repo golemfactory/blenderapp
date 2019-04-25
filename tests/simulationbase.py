@@ -165,5 +165,6 @@ class SimulationBase(abc.ABC):
             assert verdict == {'verdict': True}
 
         for frame in expected_frames:
-            result_file = req_results / f'result{frame:04d}.{task_params["format"]}'  # noqa
+            result_file = \
+                req_results / f'result{frame:04d}.{task_params["format"]}'
             assert result_file.exists()
