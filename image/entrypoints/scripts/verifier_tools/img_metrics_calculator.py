@@ -129,7 +129,7 @@ def convert_to_png_if_needed(img_path):
     name = os.path.basename(img_path)
     file_name = os.path.join("/tmp/", name)
     if extension == "exr":
-        channels = OpenEXR.InputFile(img_path).header()['channels']
+        channels = OpenEXR.InputFile(str(img_path)).header()['channels']
         if 'RenderLayer.Combined.R' in channels:
             sys.exit("There is no support for OpenEXR multilayer")
         ConvertEXRToPNG(img_path, file_name)
