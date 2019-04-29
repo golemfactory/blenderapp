@@ -23,10 +23,22 @@ class TestDocker(SimulationBase):
     @classmethod
     def setup_class(cls):
         cls.client = docker.from_env()
-        cls.client.images.build(
+        low_level_client = \
+            docker.APIClient(base_url='unix://var/run/docker.sock')
+        streamer = low_level_client.build(
+            decode=True,
             path=str(Path(__file__).parent.parent / 'image'),
             tag=TAG,
         )
+        for chunk in streamer:
+            if 'stream' in chunk:
+                for line in chunk['stream'].splitlines():
+                    print(line)
+            if 'error' in chunk:
+                raise Exception(chunk['error'])
+        image_size = \
+            low_level_client.inspect_image(TAG)['VirtualSize'] / 1024 / 1024
+        print(f"Docker image size: {image_size:.2f} MB")
 
     def _run_command(
             self,
