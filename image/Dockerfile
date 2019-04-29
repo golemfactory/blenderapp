@@ -17,7 +17,6 @@ RUN apt-get update && \
     libglib2.0-0 \
     g++ \
     libsm6 \
-    libxrender1 \
     zlib1g-dev \
     libopenexr-dev && \
   /golem/install_py_libs.sh /golem/work/requirements.txt && \
@@ -55,10 +54,6 @@ ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 
 WORKDIR /golem/work
-
-# RUN apt-get update && apt-get install -y build-essential libfreeimage-dev
-# COPY taskcollector /golem/taskcollector
-# RUN make -C /golem/taskcollector
 
 COPY benchmark /golem/benchmark
 
