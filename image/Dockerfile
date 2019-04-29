@@ -19,10 +19,20 @@ RUN apt-get update && \
     libsm6 \
     zlib1g-dev \
     libopenexr-dev && \
-    /golem/install_py_libs.sh /golem/work/requirements.txt && \
-    /golem/copy.sh && \
+  /golem/install_py_libs.sh /golem/work/requirements.txt && \
+  /golem/copy.sh && \
+  apt-get remove -y \
+    libopenexr-dev \
+    zlib1g-dev \
+    wget \
+    libxrender1 \
+    libsm6 \
+    g++ \
+    libglib2.0-0 && \
+  apt-get clean && \
   apt-get -y autoremove && \
-  rm -rf /var/lib/apt/lists/*
+  rm -rf /var/lib/apt/lists/* && \
+  rm -rf /root/.cache
 
 # Create symbolic link to python. I don't know where, something removes it.
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
