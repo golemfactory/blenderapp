@@ -68,7 +68,8 @@ RUN apt-get update && \
   apt-get clean && \
   apt-get -y autoremove && \
   rm -rf /var/lib/apt/lists/* && \
-  rm -rf /root/.cache
+  rm -rf /root/.cache && \
+  find / -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
 
 # Create symbolic link to python. I don't know where, something removes it.
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
