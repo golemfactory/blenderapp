@@ -7,7 +7,8 @@ ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/bl
 # ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 
 RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
-    mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender
+    mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender && \
+    rm -rf /blender/2.79/datafiles/locale
 
 
 FROM golemfactory/base:1.4 as all-libs
