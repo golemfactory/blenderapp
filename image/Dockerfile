@@ -6,15 +6,15 @@ ENV GLIBC_VERSION 219
 ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
 # ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 
-RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
-    mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender && \
-    rm -rf /blender/2.79/datafiles/locale
+RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / \
+  && mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender \
+  && rm -rf /blender/2.79/datafiles/locale
 
 
 FROM golemfactory/base:1.4 as all-libs
 
-RUN apt-get update && \
-  apt-get install -y \
+RUN apt-get update \
+  && apt-get install -y \
     curl \
     bzip2 \
     libfreetype6 \
@@ -62,30 +62,28 @@ COPY --from=missing-libs /golem-libs/ /usr/local/lib/
 COPY --from=all-libs /lib/x86_64-linux-gnu/libbsd.so.0 /usr/local/lib/
 
 COPY entrypoints/scripts/verifier_tools/requirements.txt /tmp
-RUN apt-get update && \
-  apt-get install -y libopenexr-dev zlib1g-dev && \
-  /golem/install_py_libs.sh /tmp/requirements.txt && \
-  apt-get remove -y zlib1g-dev && \
-  apt-get clean && \
-  apt-get -y autoremove && \
-  rm -rf /var/lib/apt/lists/* && \
-  rm -rf /root/.cache && \
-  find / -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
+RUN apt-get update \
+  && apt-get install -y libopenexr-dev zlib1g-dev \
+  && /golem/install_py_libs.sh /tmp/requirements.txt \
+  && apt-get remove -y zlib1g-dev \
+  && apt-get clean \
+  && apt-get -y autoremove \
+  && rm -rf /var/lib/apt/lists/* \
+  && rm -rf /root/.cache \
+  && find / -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
 
-# Create symbolic link to python. I don't know where, something removes it.
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
 COPY --from=blender /blender /blender
 
 ENV PATH=/blender:/usr/bin/:$PATH
 
-ADD entrypoints/ /golem/entrypoints/
+COPY entrypoints/ /golem/entrypoints/
+COPY benchmark /golem/benchmark
 
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
 
 WORKDIR /golem/work
-
-COPY benchmark /golem/benchmark
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "python3", "/golem/entrypoints/app_entrypoint.py"]
