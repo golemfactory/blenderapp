@@ -1,6 +1,7 @@
+# I dunno why --extra-index-url is needed since, since it's present in the golem_blender_app
+# but it doesn't work without it
+--extra-index-url https://builds.golem.network
 -e image/golem_blender_app
 
 pytest==3.2.1
 docker==3.7.0
-typing
-click

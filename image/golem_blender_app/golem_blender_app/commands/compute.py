@@ -1,19 +1,17 @@
-import json
 import os
 import zipfile
 from pathlib import Path
 
 from golem_blender_app.render_tools import blender_render
+from golem_task_api import constants
 
 
-def compute(
-        work_dir: Path,
-        network_resources_dir: Path):
-    with open(work_dir / 'params.json', 'r') as f:
-        params = json.load(f)
-    resources_dir = work_dir / 'resources'
-    resources_dir.mkdir()
-    result_dir = work_dir / 'result'
+def compute(work_dir: Path, subtask_id: str, subtask_params: dict):
+    network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
+    params = subtask_params
+    subtask_work_dir = work_dir / subtask_id
+    resources_dir = work_dir / constants.RESOURCES_DIR
+    result_dir = subtask_work_dir / 'result'
     result_dir.mkdir()
     for rid in params['resources']:
         with zipfile.ZipFile(network_resources_dir / f'{rid}.zip', 'r') as zipf:
@@ -34,7 +32,7 @@ def compute(
         },
     )
 
-    with zipfile.ZipFile(work_dir / 'result.zip', 'w') as zipf:
+    with zipfile.ZipFile(subtask_work_dir / 'result.zip', 'w') as zipf:
         for filename in os.listdir(result_dir):
             zipf.write(result_dir / filename, filename)
             # FIXME delete raw files ?

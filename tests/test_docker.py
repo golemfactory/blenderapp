@@ -1,10 +1,15 @@
+import os
+import time
 from pathlib import Path
-from typing import Optional
 
 import docker
 import pytest
 
 from .simulationbase import SimulationBase
+
+from golem_task_api.golem_task_api_pb2 import (
+    RunBenchmarkRequest,
+)
 
 TAG = 'blenderapp_test'
 
@@ -28,83 +33,35 @@ class TestDocker(SimulationBase):
             tag=TAG,
         )
 
-    def _run_command(
-            self,
-            command: str,
-            work: Optional[Path]=None,
-            resources: Optional[Path]=None,
-            network_resources: Optional[Path]=None,
-            results: Optional[Path]=None,
-            network_results: Optional[Path]=None):
-        volumes = {}
-        if work:
-            volumes[work] = {'bind': '/golem/work', 'mode': 'rw'}
-        if resources:
-            volumes[resources] = {'bind': '/golem/resources', 'mode': 'rw'}
-        if network_resources:
-            volumes[network_resources] = \
-                {'bind': '/golem/network_resources', 'mode': 'rw'}
-        if results:
-            volumes[results] = {'bind': '/golem/results', 'mode': 'rw'}
-        if network_results:
-            volumes[network_results] = \
-                {'bind': '/golem/network_results', 'mode': 'rw'}
-        self.client.containers.run(
+    def _spawn_server(self, work_dir: Path, port: int):
+        return self.client.containers.run(
             TAG,
-            command,
-            volumes=volumes,
+            command=str(port),
+            volumes={
+                str(work_dir): {'bind': '/golem/work', 'mode': 'rw'}
+            },
+            detach=True,
+            ports={
+                port: ('127.0.0.1', port),
+            },
+            environment={
+                "LOCAL_USER_ID": os.getuid(),
+            },
         )
 
-    def test_benchmark(self):
-        self._run_command('benchmark')
+    def _close_server(self, server):
+        logs = server.logs().decode('utf-8')
+        print(logs)
+        server.kill()
 
-    def _create_task(
-            self,
-            work: Path,
-            resources: Path,
-            network_resources: Path):
-        self._run_command(
-            'create-task',
-            work=work,
-            resources=resources,
-            network_resources=network_resources,
-        )
+    def test_benchmark(self, tmpdir):
+        port = 50005
+        server = self._spawn_server(Path(tmpdir), port)
+        golem_app = self._get_golem_app(port)
+        time.sleep(3)
 
-    def _get_next_subtask(
-            self,
-            work: Path,
-            resources: Path,
-            network_resources: Path):
-        self._run_command(
-            'get-next-subtask',
-            work=work,
-            resources=resources,
-            network_resources=network_resources,
-        )
+        request = RunBenchmarkRequest()
+        reply = self.loop.run_until_complete(golem_app.RunBenchmark(request))
+        assert reply.score > 0
 
-    def _compute(
-            self,
-            work: Path,
-            network_resources: Path):
-        self._run_command(
-            'compute',
-            work=work,
-            network_resources=network_resources,
-        )
-
-    def _verify(
-            self,
-            subtask_id: str,
-            work: Path,
-            resources: Path,
-            network_resources: Path,
-            results: Path,
-            network_results: Path):
-        self._run_command(
-            f'verify {subtask_id}',
-            work=work,
-            resources=resources,
-            network_resources=network_resources,
-            results=results,
-            network_results=network_results,
-        )
+        self._close_server(server)

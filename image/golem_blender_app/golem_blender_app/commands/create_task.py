@@ -4,14 +4,14 @@ import zipfile
 from pathlib import Path
 
 from golem_blender_app.commands import utils
+from golem_task_api import constants
 
 
-def create_task(
-        work_dir: Path,
-        resources_dir: Path,
-        network_resources_dir: Path) -> None:
-    with open(work_dir / 'task_params.json', 'r') as f:
-        params = json.load(f)
+def create_task(work_dir: Path, params: dict) -> None:
+    resources_dir = work_dir / constants.RESOURCES_DIR
+    network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
+    with open(work_dir / 'task_params.json', 'w') as f:
+        json.dump(params, f)
     frame_count = len(utils.string_to_frames(params['frames']))
     subtasks_count = params['subtasks_count']
     assert subtasks_count <= frame_count or subtasks_count % frame_count == 0

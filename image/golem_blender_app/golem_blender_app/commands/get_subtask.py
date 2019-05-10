@@ -5,10 +5,7 @@ import json
 from golem_blender_app.commands import utils
 
 
-def get_next_subtask(
-        work_dir: Path,
-        resources_dir: Path,
-        network_resources_dir: Path):
+def get_next_subtask(work_dir: Path):
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
     with utils.get_db_connection(work_dir) as db:
@@ -49,8 +46,7 @@ def get_next_subtask(
     with open(work_dir / f'subtask{subtask_id}.json', 'w') as f:
         json.dump(subtask_params, f)
 
-    with open(work_dir / 'subtask_id.txt', 'w') as f:
-        f.write(subtask_id)
+    return subtask_id, subtask_params
 
 
 def _choose_frames(

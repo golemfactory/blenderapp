@@ -4,14 +4,12 @@ import time
 from golem_blender_app.render_tools import blender_render
 
 
-def benchmark(
-        work_dir: Path,
-        resources_dir: Path):
+def benchmark(work_dir: Path) -> float:
     result_dir = work_dir / 'result'
     result_dir.mkdir()
 
     params = {
-        'scene_file': resources_dir / 'bmw27_cpu.blend',
+        'scene_file': '/golem/benchmark/bmw27_cpu.blend',
         'frames': [1],
         'output_format': 'png',
         'resolution': [200, 100],
@@ -31,4 +29,6 @@ def benchmark(
             "OUTPUT_DIR": str(result_dir),
         },
     )
-    print(time.time() - start_time)
+    time_taken = time.time() - start_time
+    # Somewhat arbitrary formula
+    return 1000.0 / time_taken
