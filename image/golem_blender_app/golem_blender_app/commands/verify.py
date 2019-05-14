@@ -4,9 +4,11 @@ import os
 import shutil
 import zipfile
 
-from ..verifier_tools import verificator
-from . import utils
-from .renderingtaskcollector import RenderingTaskCollector
+from golem_blender_app.commands import utils
+from golem_blender_app.commands.renderingtaskcollector import (
+    RenderingTaskCollector
+)
+from golem_blender_app.verifier_tools import verificator
 
 
 def verify(

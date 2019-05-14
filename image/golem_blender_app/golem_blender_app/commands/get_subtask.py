@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import List
 import json
 
-from . import utils
+from golem_blender_app.commands import utils
 
 
 def get_next_subtask(

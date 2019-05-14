@@ -2,12 +2,15 @@ from pathlib import Path
 
 import click
 
-from scripts.commands.benchmark import benchmark as benchmark_impl
-from scripts.commands.compute import compute as compute_impl
-from scripts.commands.create_task import create_task as create_task_impl
-from scripts.commands.get_subtask import get_next_subtask \
-    as get_next_subtask_impl
-from scripts.commands.verify import verify as verify_impl
+from golem_blender_app.commands.benchmark import benchmark as benchmark_impl
+from golem_blender_app.commands.compute import compute as compute_impl
+from golem_blender_app.commands.create_task import (
+    create_task as create_task_impl
+)
+from golem_blender_app.commands.get_subtask import (
+    get_next_subtask as get_next_subtask_impl
+)
+from golem_blender_app.commands.verify import verify as verify_impl
 
 
 WORK_DIR = Path('/golem/work')

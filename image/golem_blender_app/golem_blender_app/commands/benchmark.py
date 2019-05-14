@@ -1,7 +1,7 @@
 from pathlib import Path
 import time
 
-from ..render_tools import blender_render
+from golem_blender_app.render_tools import blender_render
 
 
 def benchmark(

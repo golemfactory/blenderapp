@@ -3,7 +3,7 @@ import zipfile
 
 from pathlib import Path
 
-from . import utils
+from golem_blender_app.commands import utils
 
 
 def create_task(
