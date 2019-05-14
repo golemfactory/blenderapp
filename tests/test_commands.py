@@ -61,21 +61,3 @@ class TestCommands(SimulationBase):
             req_work,
             req_results
         )
-    def test_one_subtasks_one_frame(self, tmpdir):
-        self._simulate(self._get_cube_params(1, "1"), tmpdir, [1])
-
-    def test_one_subtasks_three_frames(self, tmpdir):
-        self._simulate(self._get_cube_params(1, "2-3;8"), tmpdir, [2, 3, 8])
-
-    def test_two_subtasks_one_frame(self, tmpdir):
-        self._simulate(self._get_cube_params(2, "5"), tmpdir, [5])
-
-    def test_two_subtasks_two_frames(self, tmpdir):
-        self._simulate(self._get_cube_params(2, "5;9"), tmpdir, [5, 9])
-
-    def test_four_subtasks_two_frames(self, tmpdir):
-        self._simulate(self._get_cube_params(4, "6-7"), tmpdir, [6, 7])
-
-    def test_restart(self, tmpdir):
-        self._simulate_restart(self._get_cube_params(2, "5;9"), tmpdir, [5, 9])
-
