@@ -3,7 +3,7 @@ import os
 import zipfile
 from pathlib import Path
 
-from ..render_tools import blender_render
+from golem_blender_app.render_tools import blender_render
 
 
 def compute(

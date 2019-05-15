@@ -32,7 +32,7 @@ COPY --from=blender /blender /blender
 # Check to see that all libraries are available
 RUN ! ldd /blender/blender | grep "=> not found"
 
-COPY entrypoints/scripts/verifier_tools/requirements.txt /tmp
+COPY golem_blender_app/requirements.txt /tmp
 RUN apt-get install -y python3-pip
 RUN pip3 install --upgrade pip
 RUN apt-get install -y python3-venv
@@ -40,7 +40,6 @@ RUN python3 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH=/opt/venv/bin:$PATH
 RUN pip install -r /tmp/requirements.txt
-RUN find /opt/venv -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
 
 # Check to see that all libraries are available
 # We don't need libgfortran
@@ -48,6 +47,11 @@ RUN ! find . -name "*.so" | xargs ldd | grep -v "libgfortran-ed201abd.so.3.0.0" 
 RUN mkdir /golem-libs
 # Find which libraries are used by Blender and python modules and copy them to /golem-libs
 RUN { find /opt/venv/lib64/python3.6/site-packages -name "*.so"; echo "/blender/blender"; } | xargs ldd | grep "=> /usr/lib/x86_64-linux-gnu" | awk '{$1=$1};1' | sort | rev | uniq -f 2 | rev | cut -f 3 -d" " | xargs cp -t /golem-libs/
+
+COPY golem_blender_app /golem/golem_blender_app
+RUN pip install /golem/golem_blender_app
+
+RUN find /opt/venv -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
 
 
 FROM golemfactory/base:1.4 as missing-libs
@@ -77,9 +81,8 @@ COPY --from=all-libs /opt/venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH=/opt/venv/bin:$PATH
 
-COPY benchmark /golem/benchmark
-COPY entrypoints/ /golem/entrypoints/
-
 WORKDIR /golem/work
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "python", "/golem/entrypoints/app_entrypoint.py"]
+COPY benchmark /golem/benchmark
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "python", "-m", "golem_blender_app.entrypoint"]
