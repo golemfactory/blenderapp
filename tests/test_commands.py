@@ -4,11 +4,11 @@ import shutil
 import pytest
 
 from golem_blender_app.commands.create_task import create_task
-from golem_blender_app.commands.restart_task import restart_task
+from golem_blender_app.commands.copy_task import copy_task
 from golem_blender_app.commands.get_subtask import get_next_subtask
 from golem_blender_app.commands.compute import compute
 from golem_blender_app.commands.verify import verify
-from golem_blender_app.commands.restart_task import restart_task
+from golem_blender_app.commands.copy_task import copy_task
 
 from .simulationbase import SimulationBase
 
@@ -53,11 +53,11 @@ class TestCommands(SimulationBase):
             req_results,
             req_net_results,
         )
-    def _restart_task(
+    def _copy_task(
             self,
             req_work: Path,
             req_results: Path):
-        restart_task(
+        copy_task(
             req_work,
             req_results
         )

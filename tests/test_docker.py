@@ -108,12 +108,12 @@ class TestDocker(SimulationBase):
             results=results,
             network_results=network_results,
         )
-    def _restart_task(
+    def _copy_task(
             self,
             req_work: Path,
             req_results: Path):
         self._run_command(
-            'restart-task',
+            'copy-task',
             work=req_work,
             results=req_results
         )

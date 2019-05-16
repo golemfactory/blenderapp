@@ -41,7 +41,7 @@ class SimulationBase(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _restart_task(
+    def _copy_task(
             self,
             req_work: Path,
             req_results: Path):
@@ -178,7 +178,7 @@ class SimulationBase(abc.ABC):
         shutil.copytree(old_results, req_results / 'restarted')
 
         self._dump_task_params(req_work, task_params)
-        self._restart_task(
+        self._copy_task(
             req_work,
             req_results
         )

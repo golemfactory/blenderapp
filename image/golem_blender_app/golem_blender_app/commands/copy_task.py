@@ -10,7 +10,7 @@ from .constants import TASK_PARAMS_FILE
 from .verify import _collect_results
 
 
-def restart_task(
+def copy_task(
         new_work_dir: Path,
         new_results_dir : Path,) -> None:
 
