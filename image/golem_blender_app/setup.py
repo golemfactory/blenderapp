@@ -2,7 +2,8 @@ from setuptools import setup
 
 with open('requirements.txt') as f:
     requirements = f.read().splitlines()
-
+extra_index = requirements[0].split(' ')[1]
+requirements.pop(0)
 
 setup(
     name='Golem-Blender-App',
@@ -25,4 +26,7 @@ setup(
     ],
     python_requires='>=3.6',
     install_requires=requirements,
+    dependency_links=[
+        extra_index,
+    ]
 )

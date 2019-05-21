@@ -11,7 +11,7 @@ RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / \
   && rm -rf /blender/2.79/datafiles/locale
 
 
-FROM golemfactory/base:1.4 as all-libs
+FROM golemfactory/base:1.4 as builder
 
 RUN apt-get update \
   && apt-get install -y \
@@ -32,18 +32,18 @@ COPY --from=blender /blender /blender
 # Check to see that all libraries are available
 RUN ! ldd /blender/blender | grep "=> not found"
 
-COPY golem_blender_app/requirements.txt /tmp
-RUN apt-get install -y python3-pip
+RUN apt-get install -y python3-pip python3-venv
 RUN pip3 install --upgrade pip
-RUN apt-get install -y python3-venv
 RUN python3 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH=/opt/venv/bin:$PATH
+RUN apt-get install -y git
+COPY golem_blender_app/requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt
 
 # Check to see that all libraries are available
 # We don't need libgfortran
-RUN ! find . -name "*.so" | xargs ldd | grep -v "libgfortran-ed201abd.so.3.0.0" | grep "=> not found"
+RUN ! find /opt/venv/lib64/python3.6/site-packages -name "*.so" | xargs ldd | grep -v "libgfortran-ed201abd.so.3.0.0" | grep "=> not found"
 RUN mkdir /golem-libs
 # Find which libraries are used by Blender and python modules and copy them to /golem-libs
 RUN { find /opt/venv/lib64/python3.6/site-packages -name "*.so"; echo "/blender/blender"; } | xargs ldd | grep "=> /usr/lib/x86_64-linux-gnu" | awk '{$1=$1};1' | sort | rev | uniq -f 2 | rev | cut -f 3 -d" " | xargs cp -t /golem-libs/
@@ -57,7 +57,7 @@ RUN find /opt/venv -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
 FROM golemfactory/base:1.4 as missing-libs
 
 RUN mkdir /golem-libs
-COPY --from=all-libs /golem-libs /golem-libs
+COPY --from=builder /golem-libs /golem-libs
 WORKDIR /golem-libs
 RUN for lib in `ls`; do ldconfig -p | grep -q $lib && rm $lib; done || true
 
@@ -69,20 +69,19 @@ MAINTAINER Golem Tech <tech@golem.network>
 COPY --from=blender /blender /blender
 ENV PATH=/blender:$PATH
 
-ENV LC_ALL C.UTF-8
-ENV LANG C.UTF-8
-
 ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-
-COPY --from=missing-libs /golem-libs/ /usr/local/lib/
-COPY --from=all-libs /lib/x86_64-linux-gnu/libbsd.so.0 /usr/local/lib/
-
-COPY --from=all-libs /opt/venv /opt/venv
-# Make sure we use the virtualenv:
-ENV PATH=/opt/venv/bin:$PATH
-
-WORKDIR /golem/work
 
 COPY benchmark /golem/benchmark
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh", "python", "-m", "golem_blender_app.entrypoint"]
+# entrypoint.sh doesn't work well with mutliple arguments
+# see https://github.com/golemfactory/golem/issues/4188
+RUN sed -ri 's/\$@/python -m golem_blender_app.entrypoint $@/' /usr/local/bin/entrypoint.sh
+
+WORKDIR /golem/work
+
+COPY --from=missing-libs /golem-libs/ /usr/local/lib/
+COPY --from=builder /lib/x86_64-linux-gnu/libbsd.so.0 /usr/local/lib/
+
+COPY --from=builder /opt/venv /opt/venv
+# Make sure we use the virtualenv:
+ENV PATH=/opt/venv/bin:$PATH

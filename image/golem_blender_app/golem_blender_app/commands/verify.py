@@ -9,15 +9,14 @@ from golem_blender_app.commands.renderingtaskcollector import (
     RenderingTaskCollector
 )
 from golem_blender_app.verifier_tools import verificator
+from golem_task_api import constants
 
 
-def verify(
-        subtask_id: str,
-        work_dir: Path,
-        resources_dir: Path,
-        network_resources_dir: Path,
-        results_dir: Path,
-        network_results_dir: Path):
+def verify(work_dir: Path, subtask_id: str) -> bool:
+    resources_dir = work_dir / constants.RESOURCES_DIR
+    results_dir = work_dir / constants.RESULTS_DIR
+    network_results_dir = work_dir / constants.NETWORK_RESULTS_DIR
+
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
     with open(work_dir / f'subtask{subtask_id}.json', 'r') as f:
@@ -51,14 +50,13 @@ def verify(
             }
         )
         print("Verdict:", verdict)
-        _save_verdict(work_dir, subtask_id, verdict)
         if not verdict:
             utils.update_subtask(
                 db,
                 subtask_num,
                 utils.SubtaskStatus.PENDING,
             )
-            return
+            return verdict
         utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
@@ -69,11 +67,7 @@ def verify(
             subtask_results_dir,
             results_dir,
         )
-
-
-def _save_verdict(work_dir: Path, subtask_id: str, verdict: bool):
-    with open(work_dir / f'verdict{subtask_id}.json', 'w') as f:
-        json.dump({'verdict': verdict}, f)
+        return verdict
 
 
 def _collect_results(
