@@ -3,5 +3,6 @@
 --extra-index-url https://builds.golem.network
 -e image/golem_blender_app
 
-pytest==3.2.1
 docker==3.7.0
+pytest==3.6.3
+pytest-asyncio==0.10.0

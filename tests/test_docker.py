@@ -7,9 +7,6 @@ import pytest
 
 from .simulationbase import SimulationBase
 
-from golem_task_api.golem_task_api_pb2 import (
-    RunBenchmarkRequest,
-)
 
 TAG = 'blenderapp_test'
 
@@ -33,7 +30,7 @@ class TestDocker(SimulationBase):
             tag=TAG,
         )
 
-    def _spawn_server(self, work_dir: Path, port: int):
+    async def _spawn_server(self, work_dir: Path, port: int):
         return self.client.containers.run(
             TAG,
             command=str(port),
@@ -47,19 +44,21 @@ class TestDocker(SimulationBase):
             user=os.getuid(),
         )
 
-    def _close_server(self, server):
+    async def _close_server(self, server):
         logs = server.logs().decode('utf-8')
         print(logs)
         server.kill()
 
-    def test_benchmark(self, tmpdir):
+    @pytest.mark.asyncio
+    async def test_benchmark(self, tmpdir):
+        print(tmpdir)
         port = 50005
-        server = self._spawn_server(Path(tmpdir), port)
-        golem_app = self._get_golem_app(port)
-        time.sleep(3)
+        server = await self._spawn_server(Path(tmpdir), port)
+        try:
+            golem_app = self._get_golem_app(port)
+            time.sleep(3)
 
-        request = RunBenchmarkRequest()
-        reply = self.loop.run_until_complete(golem_app.RunBenchmark(request))
-        assert reply.score > 0
-
-        self._close_server(server)
+            score = await golem_app.run_benchmark()
+            assert score > 0
+        finally:
+            await self._close_server(server)
