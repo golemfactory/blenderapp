@@ -151,18 +151,29 @@ class SimulationBase(abc.ABC):
             ]
         }
 
+    def _setup_requestor(self, tmpdir: Path, port: int = 50005):
+        work_dir = tmpdir / 'requestor'
+        work_dir.mkdir()
+        server = self._spawn_server(work_dir, port)
+        return work_dir, port, server
+
+    def _setup_provider(self, tmpdir: Path, port: int = 50006):
+        work_dir = tmpdir / 'provider'
+        work_dir.mkdir()
+        server = self._spawn_server(work_dir, port)
+        return work_dir, port, server
+
     def _simulate(self, task_params: dict, tmpdir, expected_frames: list):
+
         tmpdir = Path(tmpdir)
-        req_work_dir = tmpdir / 'requestor'
-        req_work_dir.mkdir()
-        prov_work_dir = tmpdir / 'provider'
-        prov_work_dir.mkdir()
         print('tmpdir:', tmpdir)
 
-        requestor_port = 50005
-        requestor_server = self._spawn_server(req_work_dir, requestor_port)
-        provider_port = 50006
-        provider_server = self._spawn_server(prov_work_dir, provider_port)
+        req_work_dir, requestor_port, requestor_server = \
+            self._setup_requestor(tmpdir)
+
+        prov_work_dir, provider_port, provider_server = \
+            self._setup_provider(tmpdir)
+
         try:
             requestor = self._get_golem_app(requestor_port)
             provider = self._get_golem_app(provider_port)
@@ -210,16 +221,14 @@ class SimulationBase(abc.ABC):
         skipping_subtasks = 1
 
         tmpdir = Path(tmpdir)
-        req_work_dir = tmpdir / 'requestor'
-        req_work_dir.mkdir()
-        prov_work_dir = tmpdir / 'provider'
-        prov_work_dir.mkdir()
         print('tmpdir:', tmpdir)
 
-        requestor_port = 50005
-        requestor_server = self._spawn_server(req_work_dir, requestor_port)
-        provider_port = 50006
-        provider_server = self._spawn_server(prov_work_dir, provider_port)
+        req_work_dir, requestor_port, requestor_server = \
+            self._setup_requestor(tmpdir)
+
+        prov_work_dir, provider_port, provider_server = \
+            self._setup_provider(tmpdir)
+
         try:
             requestor = self._get_golem_app(requestor_port)
             provider = self._get_golem_app(provider_port)
