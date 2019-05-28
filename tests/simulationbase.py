@@ -268,10 +268,6 @@ class SimulationBase(abc.ABC):
             prov_task_work_dir, prov_task_net_resources_dir = \
                 self._make_prov_dirs(prov_work_dir, task_id)
 
-
-            print('_create_task: ', task_id, ' params=', task_params)
-            self._create_task(requestor, task_id, task_params)
-
             for _ in range(skipping_subtasks):
 
                 self._do_subtask(

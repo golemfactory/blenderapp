@@ -19,19 +19,14 @@ def get_db_connection(work_dir: Path):
 
 def init_tables(db, subtasks_count: int) -> None:
     with db:
-        table_name = 'subtask_status'
-        table_exists = db.execute(f"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table_name}';")
-        result = table_exists.fetchone()
         db.execute(
-            f'CREATE TABLE IF NOT EXISTS {table_name}(num int, status text, unique_id text)')
-        print("created: {}", result)
-        if result[0] == 0:
-            values = \
-                ((x, SubtaskStatus.PENDING.value) for x in range(subtasks_count))
-            db.executemany(
-                f'INSERT INTO {table_name}(num, status) VALUES (?,?)',
-                values,
-            )
+            'CREATE TABLE subtask_status(num int, status text, unique_id text)')
+        values = \
+            ((x, SubtaskStatus.PENDING.value) for x in range(subtasks_count))
+        db.executemany(
+            'INSERT INTO subtask_status(num, status) VALUES (?,?)',
+            values,
+        )
 
 
 def update_subtask(
@@ -65,16 +60,6 @@ def get_subtasks_statuses(
     return {
         v[0]: (SubtaskStatus(v[1]), v[2]) for v in values
     }
-
-
-def get_subtasks_with_status(db, status: SubtaskStatus) -> List[int]:
-    cursor = db.cursor()
-    cursor.execute(
-        "SELECT num FROM subtask_status WHERE status = ?",
-        (status.value,),
-    )
-    rows = cursor.fetchall()
-    return list(map(lambda r: r[0], rows))
 
 
 def get_next_pending_subtask(db) -> Optional[int]:
