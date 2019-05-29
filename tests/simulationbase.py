@@ -194,7 +194,7 @@ class SimulationBase(abc.ABC):
             self._create_task(requestor, task_id, task_params)
 
             for _ in range(task_params['subtasks_count']):
-                self._do_subtask(
+                assert self._do_subtask(
                     task_id,
                     requestor,
                     provider,
@@ -252,7 +252,7 @@ class SimulationBase(abc.ABC):
             self._create_task(requestor, task_id, task_params)
 
             for _ in range(task_params['subtasks_count'] - skipping_subtasks):
-                self._do_subtask(
+                assert self._do_subtask(
                     task_id,
                     requestor,
                     provider,
@@ -277,7 +277,7 @@ class SimulationBase(abc.ABC):
                 self._make_prov_dirs(prov_work_dir, task_id)
 
             for _ in range(skipping_subtasks):
-                self._do_subtask(
+                assert self._do_subtask(
                     task_id,
                     requestor,
                     provider,
@@ -327,7 +327,7 @@ class SimulationBase(abc.ABC):
             task_id,
             subtask_id,
         )
-        assert success
+        return success
 
     def test_one_subtasks_one_frame(self, tmpdir):
         self._simulate(self._get_cube_params(1, "1"), tmpdir, [1])
