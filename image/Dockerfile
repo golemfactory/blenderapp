@@ -1,4 +1,6 @@
-FROM golemfactory/base:1.4 as blender
+FROM golemfactory/base:1.5 as base
+
+FROM base as blender
 
 ENV BLENDER_MAJOR 2.79
 ENV BLENDER_VERSION 2.79
@@ -11,11 +13,10 @@ RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / \
   && rm -rf /blender/2.79/datafiles/locale
 
 
-FROM golemfactory/base:1.4 as builder
+FROM blender as builder
 
 RUN apt-get update \
   && apt-get install -y \
-    curl \
     bzip2 \
     libfreetype6 \
     libgl1-mesa-dev \
@@ -28,16 +29,14 @@ RUN apt-get update \
     zlib1g-dev \
     libopenexr-dev
 
-COPY --from=blender /blender /blender
 # Check to see that all libraries are available
 RUN ! ldd /blender/blender | grep "=> not found"
 
 RUN apt-get install -y python3-pip python3-venv
-RUN pip3 install --upgrade pip
 RUN python3 -m venv /opt/venv
 # Make sure we use the virtualenv:
 ENV PATH=/opt/venv/bin:$PATH
-RUN apt-get install -y git
+RUN pip install --upgrade pip
 COPY golem_blender_app/requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt
 
@@ -54,7 +53,7 @@ RUN pip install /golem/golem_blender_app
 RUN find /opt/venv -regex '^.*\(__pycache__\|\.py[co]\)$' -delete
 
 
-FROM golemfactory/base:1.4 as missing-libs
+FROM base as missing-libs
 
 RUN mkdir /golem-libs
 COPY --from=builder /golem-libs /golem-libs
@@ -62,7 +61,7 @@ WORKDIR /golem-libs
 RUN for lib in `ls`; do ldconfig -p | grep -q $lib && rm $lib; done || true
 
 
-FROM golemfactory/base:1.4
+FROM base
 
 MAINTAINER Golem Tech <tech@golem.network>
 
@@ -73,9 +72,7 @@ ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 
 COPY benchmark /golem/benchmark
 
-# entrypoint.sh doesn't work well with mutliple arguments
-# see https://github.com/golemfactory/golem/issues/4188
-RUN sed -ri 's/\$@/python -m golem_blender_app.entrypoint $@/' /usr/local/bin/entrypoint.sh
+ENTRYPOINT ["python", "-m", "golem_blender_app.entrypoint"]
 
 WORKDIR /golem/work
 
