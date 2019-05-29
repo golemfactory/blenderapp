@@ -82,7 +82,7 @@ class SimulationBase(abc.ABC):
             self.loop.run_until_complete(golem_app.Verify(request))
         return reply.success
 
-    def _make_req_dirs(self, tmpdir, task_id, exist_ok=False):
+    def _make_req_dirs(self, tmpdir: Path, task_id: str, exist_ok: bool=False):
         req_work = tmpdir / task_id
         req_resources = req_work / constants.RESOURCES_DIR
         req_net_resources = req_work / constants.NETWORK_RESOURCES_DIR
@@ -94,7 +94,7 @@ class SimulationBase(abc.ABC):
             p.mkdir(exist_ok=exist_ok)
         return result_tupple
 
-    def _make_prov_dirs(self, tmpdir, task_id):
+    def _make_prov_dirs(self, tmpdir: Path, task_id: str):
         prov_work = tmpdir / task_id
         prov_net_resources = prov_work / constants.NETWORK_RESOURCES_DIR
         for p in [prov_work, prov_net_resources]:
@@ -163,7 +163,7 @@ class SimulationBase(abc.ABC):
         server = self._spawn_server(work_dir, port)
         return work_dir, port, server
 
-    def _simulate(self, task_params: dict, tmpdir, expected_frames: list):
+    def _simulate(self, task_params: dict, tmpdir: Path, expected_frames: list):
         tmpdir = Path(tmpdir)
         print('tmpdir:', tmpdir)
 
@@ -213,8 +213,11 @@ class SimulationBase(abc.ABC):
             self._close_server(provider_server)
 
 
-    def _simulate_restart(self, task_params: dict, tmpdir,
-                          expected_frames: list):
+    def _simulate_restart(
+            self,
+            task_params: dict,
+            tmpdir: Path,
+            expected_frames: list):
         skipping_subtasks = 1
 
         tmpdir = Path(tmpdir)
@@ -292,9 +295,15 @@ class SimulationBase(abc.ABC):
             self._close_server(requestor_server)
             self._close_server(provider_server)
 
-    def _do_subtask(self, task_id, requestor, provider,
-                    req_task_net_resources_dir, req_task_net_results_dir,
-                    prov_task_net_resources_dir, prov_task_work_dir):
+    def _do_subtask(
+            self,
+            task_id: str,
+            requestor: GolemAppStub,
+            provider: GolemAppStub,
+            req_task_net_resources_dir: Path,
+            req_task_net_results_dir: Path,
+            prov_task_net_resources_dir: Path,
+            prov_task_work_dir: Path):
         subtask_id, subtask_params = self._get_next_subtask(requestor, task_id)
         assert subtask_params['resources'] == [0]
 
