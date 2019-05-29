@@ -44,9 +44,7 @@ class TestDocker(SimulationBase):
             ports={
                 port: ('127.0.0.1', port),
             },
-            environment={
-                "LOCAL_USER_ID": os.getuid(),
-            },
+            user=os.getuid(),
         )
 
     def _close_server(self, server):
