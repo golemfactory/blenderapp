@@ -164,7 +164,6 @@ class SimulationBase(abc.ABC):
         return work_dir, port, server
 
     def _simulate(self, task_params: dict, tmpdir, expected_frames: list):
-
         tmpdir = Path(tmpdir)
         print('tmpdir:', tmpdir)
 
@@ -195,7 +194,6 @@ class SimulationBase(abc.ABC):
             self._create_task(requestor, task_id, task_params)
 
             for _ in range(task_params['subtasks_count']):
-
                 self._do_subtask(
                     task_id,
                     requestor,
@@ -217,7 +215,6 @@ class SimulationBase(abc.ABC):
 
     def _simulate_restart(self, task_params: dict, tmpdir,
                           expected_frames: list):
-
         skipping_subtasks = 1
 
         tmpdir = Path(tmpdir)
@@ -252,7 +249,6 @@ class SimulationBase(abc.ABC):
             self._create_task(requestor, task_id, task_params)
 
             for _ in range(task_params['subtasks_count'] - skipping_subtasks):
-
                 self._do_subtask(
                     task_id,
                     requestor,
@@ -278,7 +274,6 @@ class SimulationBase(abc.ABC):
                 self._make_prov_dirs(prov_work_dir, task_id)
 
             for _ in range(skipping_subtasks):
-
                 self._do_subtask(
                     task_id,
                     requestor,
