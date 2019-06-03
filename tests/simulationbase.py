@@ -1,86 +1,26 @@
 from pathlib import Path
 import abc
-import asyncio
 import json
 import random
 import shutil
 import time
+import pytest
 
-from grpclib.client import Channel
-
-from golem_task_api import constants
-from golem_task_api.golem_task_api_pb2 import (
-    CreateTaskRequest,
-    CreateTaskReply,
-    NextSubtaskRequest,
-    NextSubtaskReply,
-    ComputeRequest,
-    ComputeReply,
-    VerifyRequest,
-    VerifyReply,
-)
-from golem_task_api.golem_task_api_grpc import (
-    GolemAppStub,
-)
+from golem_task_api import constants, GolemAppClient
 
 
 class SimulationBase(abc.ABC):
 
-    def setup_method(self):
-        self.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(self.loop)
-
-    def teardown_method(self):
-        self.loop.stop()
-        self.loop.close()
-
     @abc.abstractmethod
-    def _spawn_server(self, work_dir: Path):
+    async def _spawn_server(self, work_dir: Path):
         pass
 
     @abc.abstractmethod
-    def _close_server(self, server):
+    async def _close_server(self, server):
         pass
 
     def _get_golem_app(self, port: int):
-        return GolemAppStub(Channel('127.0.0.1', port, loop=self.loop))
-
-    def _create_task(
-            self,
-            golem_app,
-            task_id: str,
-            task_params: dict):
-        request = CreateTaskRequest()
-        request.task_id = task_id
-        request.task_params_json = json.dumps(task_params)
-        self.loop.run_until_complete(golem_app.CreateTask(request))
-
-    def _get_next_subtask(self, golem_app, task_id: str):
-        request = NextSubtaskRequest()
-        request.task_id = task_id
-        reply = \
-            self.loop.run_until_complete(golem_app.NextSubtask(request))
-        return reply.subtask_id, json.loads(reply.subtask_params_json)
-
-    def _compute(
-            self,
-            golem_app,
-            task_id: str,
-            subtask_id: str,
-            subtask_params: dict):
-        request = ComputeRequest()
-        request.task_id = task_id
-        request.subtask_id = subtask_id
-        request.subtask_params_json = json.dumps(subtask_params)
-        self.loop.run_until_complete(golem_app.Compute(request))
-
-    def _verify(self, golem_app, task_id: str, subtask_id: str) -> bool:
-        request = VerifyRequest()
-        request.task_id = task_id
-        request.subtask_id = subtask_id
-        reply = \
-            self.loop.run_until_complete(golem_app.Verify(request))
-        return reply.success
+        return GolemAppClient('127.0.0.1', port)
 
     def _make_req_dirs(self, tmpdir):
         req = tmpdir / f'req{random.random()}'
@@ -153,7 +93,7 @@ class SimulationBase(abc.ABC):
             ]
         }
 
-    def _simulate(self, task_params: dict, tmpdir, expected_frames: list):
+    async def _simulate(self, task_params: dict, tmpdir, expected_frames: list):
         tmpdir = Path(tmpdir)
         req_work_dir = tmpdir / 'requestor'
         req_work_dir.mkdir()
@@ -162,9 +102,10 @@ class SimulationBase(abc.ABC):
         print('tmpdir:', tmpdir)
 
         requestor_port = 50005
-        requestor_server = self._spawn_server(req_work_dir, requestor_port)
+        requestor_server = \
+            await self._spawn_server(req_work_dir, requestor_port)
         provider_port = 50006
-        provider_server = self._spawn_server(prov_work_dir, provider_port)
+        provider_server = await self._spawn_server(prov_work_dir, provider_port)
         try:
             requestor = self._get_golem_app(requestor_port)
             provider = self._get_golem_app(provider_port)
@@ -194,12 +135,12 @@ class SimulationBase(abc.ABC):
 
             self._put_cube_to_resources(req_task_resources_dir)
 
-            self._create_task(requestor, task_id, task_params)
+            await requestor.create_task(task_id, task_params)
 
             for _ in range(task_params['subtasks_count']):
 
                 subtask_id, subtask_params = \
-                    self._get_next_subtask(requestor, task_id)
+                    await requestor.next_subtask(task_id)
                 assert subtask_params['resources'] == [0]
 
                 self._copy_resources_from_requestor(
@@ -209,18 +150,14 @@ class SimulationBase(abc.ABC):
                 )
                 prov_subtask_work_dir = prov_task_work_dir / subtask_id
                 prov_subtask_work_dir.mkdir()
-                self._compute(provider, task_id, subtask_id, subtask_params)
+                await provider.compute(task_id, subtask_id, subtask_params)
                 self._copy_result_from_provider(
                     prov_subtask_work_dir,
                     req_task_net_results_dir,
                     subtask_id,
                 )
 
-                success = self._verify(
-                    requestor,
-                    task_id,
-                    subtask_id,
-                )
+                success = await requestor.verify(task_id, subtask_id)
                 assert success
 
             for frame in expected_frames:
@@ -228,23 +165,30 @@ class SimulationBase(abc.ABC):
                 result_file = req_task_results_dir / filename
                 assert result_file.exists()
         finally:
-            self._close_server(requestor_server)
-            self._close_server(provider_server)
+            await self._close_server(requestor_server)
+            await self._close_server(provider_server)
 
-    def test_one_subtasks_one_frame(self, tmpdir):
-        self._simulate(self._get_cube_params(1, "1"), tmpdir, [1])
+    @pytest.mark.asyncio
+    async def test_one_subtasks_one_frame(self, tmpdir):
+        await self._simulate(self._get_cube_params(1, "1"), tmpdir, [1])
 
-    def test_one_subtasks_three_frames(self, tmpdir):
-        self._simulate(self._get_cube_params(1, "2-3;8"), tmpdir, [2, 3, 8])
+    @pytest.mark.asyncio
+    async def test_one_subtasks_three_frames(self, tmpdir):
+        await self._simulate(
+            self._get_cube_params(1, "2-3;8"), tmpdir, [2, 3, 8])
 
-    def test_two_subtasks_one_frame_png(self, tmpdir):
-        self._simulate(self._get_cube_params(2, "5"), tmpdir, [5])
+    @pytest.mark.asyncio
+    async def test_two_subtasks_one_frame_png(self, tmpdir):
+        await self._simulate(self._get_cube_params(2, "5"), tmpdir, [5])
 
-    def test_two_subtasks_one_frame_exr(self, tmpdir):
-        self._simulate(self._get_cube_params(2, "5", "exr"), tmpdir, [5])
+    @pytest.mark.asyncio
+    async def test_two_subtasks_one_frame_exr(self, tmpdir):
+        await self._simulate(self._get_cube_params(2, "5", "exr"), tmpdir, [5])
 
-    def test_two_subtasks_two_frames(self, tmpdir):
-        self._simulate(self._get_cube_params(2, "5;9"), tmpdir, [5, 9])
+    @pytest.mark.asyncio
+    async def test_two_subtasks_two_frames(self, tmpdir):
+        await self._simulate(self._get_cube_params(2, "5;9"), tmpdir, [5, 9])
 
-    def test_four_subtasks_two_frames(self, tmpdir):
-        self._simulate(self._get_cube_params(4, "6-7"), tmpdir, [6, 7])
+    @pytest.mark.asyncio
+    async def test_four_subtasks_two_frames(self, tmpdir):
+        await self._simulate(self._get_cube_params(4, "6-7"), tmpdir, [6, 7])

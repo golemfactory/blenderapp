@@ -40,6 +40,11 @@ RUN pip install --upgrade pip
 COPY golem_blender_app/requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt
 
+# Use following lines to work with the unreleased task-api module
+# RUN apt-get install -y git
+# RUN pip uninstall -y golem-task-api
+# RUN pip install git+https://github.com/golemfactory/task-api@a2c10b687943f2fb1bd1b9e83f6632786c354f05#subdirectory=python
+
 # Check to see that all libraries are available
 # We don't need libgfortran
 RUN ! find /opt/venv/lib64/python3.6/site-packages -name "*.so" | xargs ldd | grep -v "libgfortran-ed201abd.so.3.0.0" | grep "=> not found"
