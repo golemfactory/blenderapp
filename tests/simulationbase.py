@@ -6,21 +6,26 @@ import shutil
 import time
 import pytest
 
-from golem_task_api import constants, GolemAppClient
+from golem_task_api import (
+    constants,
+    ProviderGolemAppClient,
+    RequestorGolemAppClient,
+)
 
 
 class SimulationBase(abc.ABC):
 
     @abc.abstractmethod
-    async def _spawn_server(self, work_dir: Path):
+    async def _spawn_requestor_server(self, work_dir: Path):
+        pass
+
+    @abc.abstractmethod
+    async def _spawn_provider_server(self, work_dir: Path):
         pass
 
     @abc.abstractmethod
     async def _close_server(self, server):
         pass
-
-    def _get_golem_app(self, port: int):
-        return GolemAppClient('127.0.0.1', port)
 
     def _make_req_dirs(self, tmpdir):
         req = tmpdir / f'req{random.random()}'
@@ -103,12 +108,13 @@ class SimulationBase(abc.ABC):
 
         requestor_port = 50005
         requestor_server = \
-            await self._spawn_server(req_work_dir, requestor_port)
+            await self._spawn_requestor_server(req_work_dir, requestor_port)
         provider_port = 50006
-        provider_server = await self._spawn_server(prov_work_dir, provider_port)
+        provider_server = \
+            await self._spawn_provider_server(prov_work_dir, provider_port)
         try:
-            requestor = self._get_golem_app(requestor_port)
-            provider = self._get_golem_app(provider_port)
+            requestor = RequestorGolemAppClient('127.0.0.1', requestor_port)
+            provider = ProviderGolemAppClient('127.0.0.1', provider_port)
             # Wait for the servers to be ready, I couldn't find a reliable
             # way for that check
             time.sleep(3)
