@@ -1,14 +1,21 @@
+import asyncio
 import os
-import time
 from pathlib import Path
+from typing import Tuple
 
 import docker
 import pytest
 
+from golem_task_api import (
+    ProviderAppCallbacks,
+    RequestorAppCallbacks,
+    RequestorAppClient,
+)
+
 from .simulationbase import SimulationBase
 
-
 TAG = 'blenderapp_test'
+NAME = 'blenderapp_test_container'
 
 
 def is_docker_available():
@@ -19,46 +26,92 @@ def is_docker_available():
     return True
 
 
-@pytest.mark.skipif(not is_docker_available(), reason='docker not available')
-class TestDocker(SimulationBase):
+class DockerRequestorCallbacks(RequestorAppCallbacks):
+    def __init__(self, work_dir: Path):
+        self._work_dir = work_dir
+        self._task = None
 
-    @classmethod
-    def setup_class(cls):
-        cls.client = docker.from_env()
-        cls.client.images.build(
-            path=str(Path(__file__).parent.parent / 'image'),
-            tag=TAG,
-        )
-
-    async def _spawn_server(self, work_dir: Path, port: int):
-        return self.client.containers.run(
+    def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
+        c = docker.from_env().containers.run(
             TAG,
-            command=str(port),
+            command=command,
             volumes={
-                str(work_dir): {'bind': '/golem/work', 'mode': 'rw'}
+                str(self._work_dir): {'bind': '/golem/work', 'mode': 'rw'}
             },
             detach=True,
-            ports={
-                port: ('127.0.0.1', port),
+            user=os.getuid(),
+            name=NAME,
+        )
+        api_client = docker.APIClient()
+        c_config = api_client.inspect_container(c.id)
+        ip_address = \
+            c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
+        return ip_address, port
+
+    async def wait_after_shutdown(self) -> None:
+        pass
+
+
+class DockerProviderCallbacks(ProviderAppCallbacks):
+    def __init__(self, work_dir: Path):
+        self._work_dir = work_dir
+
+    async def run_command(self, command: str) -> None:
+        docker.from_env().containers.run(
+            TAG,
+            command=command,
+            volumes={
+                str(self._work_dir): {'bind': '/golem/work', 'mode': 'rw'}
             },
             user=os.getuid(),
         )
 
-    async def _close_server(self, server):
-        logs = server.logs().decode('utf-8')
-        print(logs)
-        server.kill()
+
+@pytest.mark.skipif(not is_docker_available(), reason='docker not available')
+class TestDocker(SimulationBase):
+
+    def teardown_method(self):
+        c = docker.from_env().containers.get(NAME)
+        if c:
+            logs = c.logs().decode('utf-8')
+            print(logs)
+            c.kill()
+            c.remove()
+
+    @classmethod
+    def setup_class(cls):
+        docker.from_env().images.build(
+            path=str(Path(__file__).parent.parent / 'image'),
+            tag=TAG,
+        )
+
+    def _get_requestor_app_callbacks(
+            self,
+            work_dir: Path,
+    ) -> RequestorAppCallbacks:
+        return DockerRequestorCallbacks(work_dir)
+
+    def _get_provider_app_callbacks(
+            self,
+            work_dir: Path,
+    ) -> ProviderAppCallbacks:
+        return DockerProviderCallbacks(work_dir)
 
     @pytest.mark.asyncio
     async def test_benchmark(self, tmpdir):
         print(tmpdir)
-        port = 50005
-        server = await self._spawn_server(Path(tmpdir), port)
-        try:
-            golem_app = self._get_golem_app(port)
-            time.sleep(3)
+        work_dir = Path(tmpdir)
 
-            score = await golem_app.run_benchmark()
+        port = 50005
+        client_callbacks = self._get_requestor_app_callbacks(work_dir)
+        client = RequestorAppClient(
+            client_callbacks,
+            port,
+        )
+        try:
+            await asyncio.sleep(3)
+            score = await client.run_benchmark()
             assert score > 0
         finally:
-            await self._close_server(server)
+            await client.shutdown()
+            await client_callbacks.wait_after_shutdown()

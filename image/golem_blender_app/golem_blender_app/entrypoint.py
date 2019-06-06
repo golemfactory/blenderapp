@@ -1,13 +1,12 @@
 from pathlib import Path
-from typing import Tuple
+from typing import List, Optional, Tuple
 import asyncio
 import sys
 
 from golem_task_api import (
-    ProviderGolemAppHandler,
-    ProviderGolemAppServer,
-    RequestorGolemAppHandler,
-    RequestorGolemAppServer,
+    ProviderAppHandler,
+    RequestorAppHandler,
+    entrypoint,
 )
 
 from golem_blender_app.commands.benchmark import benchmark
@@ -17,7 +16,7 @@ from golem_blender_app.commands.get_subtask import get_next_subtask
 from golem_blender_app.commands.verify import verify
 
 
-class RequestorHandler(RequestorGolemAppHandler):
+class RequestorHandler(RequestorAppHandler):
     async def create_task(
             self,
             task_work_dir: Path,
@@ -39,7 +38,7 @@ class RequestorHandler(RequestorGolemAppHandler):
         return benchmark(work_dir)
 
 
-class ProviderHandler(ProviderGolemAppHandler):
+class ProviderHandler(ProviderAppHandler):
     async def compute(
             self,
             task_work_dir: Path,
@@ -51,46 +50,19 @@ class ProviderHandler(ProviderGolemAppHandler):
         return benchmark(work_dir)
 
 
-async def spawn_requestor_server(work_dir: Path, port: int, server_cert=None, server_key=None, client_cert=None):  # noqa
-    handler = RequestorHandler()
-    server = RequestorGolemAppServer(work_dir, port, handler)
-    await server.start()
-    return server
-
-
-async def run_requestor_server(work_dir: Path, port: int, server_cert=None, server_key=None, client_cert=None):  # noqa
-    server = await spawn_requestor_server(work_dir, port)
-    try:
-        while True:
-            await asyncio.sleep(3600)
-    finally:
-        print('Shutting down server...')
-        await server.stop()
-
-
-async def spawn_provider_server(work_dir: Path, port: int, server_cert=None, server_key=None, client_cert=None):  # noqa
-    handler = ProviderHandler()
-    server = ProviderGolemAppServer(work_dir, port, handler)
-    await server.start()
-    return server
-
-
-async def run_provider_server(work_dir: Path, port: int, server_cert=None, server_key=None, client_cert=None):  # noqa
-    server = await spawn_provider_server(work_dir, port)
-    try:
-        while True:
-            await asyncio.sleep(3600)
-    finally:
-        print('Shutting down server...')
-        await server.stop()
+async def main(
+        work_dir: Path,
+        argv: List[str],
+        requestor_handler: Optional[RequestorHandler] = None,
+        provider_handler: Optional[ProviderHandler] = None,
+):
+    await entrypoint(work_dir, argv, requestor_handler, provider_handler)
 
 
 if __name__ == '__main__':
-    if sys.argv[1] == 'requestor':
-        asyncio.get_event_loop().run_until_complete(
-            run_requestor_server(Path('/golem/work'), int(sys.argv[2])))
-    elif sys.argv[1] == 'provider':
-        asyncio.get_event_loop().run_until_complete(
-            run_provider_server(Path('/golem/work'), int(sys.argv[2])))
-    else:
-        raise Exception(f'Unknown command: {sys.argv[1]}')
+    asyncio.get_event_loop().run_until_complete(main(
+        Path('/golem/work'),
+        sys.argv[1:],
+        RequestorHandler(),
+        ProviderHandler(),
+    ))

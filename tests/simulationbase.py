@@ -1,30 +1,35 @@
 from pathlib import Path
+from typing import Any, Tuple
 import abc
+import asyncio
 import json
 import random
 import shutil
-import time
 import pytest
 
 from golem_task_api import (
     constants,
-    ProviderGolemAppClient,
-    RequestorGolemAppClient,
+    ProviderAppCallbacks,
+    ProviderAppClient,
+    RequestorAppCallbacks,
+    RequestorAppClient,
 )
 
 
 class SimulationBase(abc.ABC):
 
     @abc.abstractmethod
-    async def _spawn_requestor_server(self, work_dir: Path):
+    def _get_requestor_app_callbacks(
+            self,
+            work_dir: Path,
+    ) -> RequestorAppCallbacks:
         pass
 
     @abc.abstractmethod
-    async def _spawn_provider_server(self, work_dir: Path):
-        pass
-
-    @abc.abstractmethod
-    async def _close_server(self, server):
+    def _get_provider_app_callbacks(
+            self,
+            work_dir: Path,
+    ) -> ProviderAppCallbacks:
         pass
 
     def _make_req_dirs(self, tmpdir):
@@ -107,17 +112,16 @@ class SimulationBase(abc.ABC):
         print('tmpdir:', tmpdir)
 
         requestor_port = 50005
-        requestor_server = \
-            await self._spawn_requestor_server(req_work_dir, requestor_port)
-        provider_port = 50006
-        provider_server = \
-            await self._spawn_provider_server(prov_work_dir, provider_port)
+        requestor_callbacks = self._get_requestor_app_callbacks(req_work_dir)
+
+        requestor_client = RequestorAppClient(
+            requestor_callbacks,
+            requestor_port,
+        )
         try:
-            requestor = RequestorGolemAppClient('127.0.0.1', requestor_port)
-            provider = ProviderGolemAppClient('127.0.0.1', provider_port)
             # Wait for the servers to be ready, I couldn't find a reliable
             # way for that check
-            time.sleep(3)
+            await asyncio.sleep(3)
 
             task_id = 'test_task_id123'
             req_task_work_dir = req_work_dir / task_id
@@ -141,12 +145,12 @@ class SimulationBase(abc.ABC):
 
             self._put_cube_to_resources(req_task_resources_dir)
 
-            await requestor.create_task(task_id, task_params)
+            await requestor_client.create_task(task_id, task_params)
 
             for _ in range(task_params['subtasks_count']):
 
                 subtask_id, subtask_params = \
-                    await requestor.next_subtask(task_id)
+                    await requestor_client.next_subtask(task_id)
                 assert subtask_params['resources'] == [0]
 
                 self._copy_resources_from_requestor(
@@ -156,14 +160,21 @@ class SimulationBase(abc.ABC):
                 )
                 prov_subtask_work_dir = prov_task_work_dir / subtask_id
                 prov_subtask_work_dir.mkdir()
-                await provider.compute(task_id, subtask_id, subtask_params)
+
+                await ProviderAppClient.compute(
+                    self._get_provider_app_callbacks(prov_task_work_dir),
+                    prov_task_work_dir,
+                    task_id,
+                    subtask_id,
+                    subtask_params,
+                )
                 self._copy_result_from_provider(
                     prov_subtask_work_dir,
                     req_task_net_results_dir,
                     subtask_id,
                 )
 
-                success = await requestor.verify(task_id, subtask_id)
+                success = await requestor_client.verify(task_id, subtask_id)
                 assert success
 
             for frame in expected_frames:
@@ -171,8 +182,8 @@ class SimulationBase(abc.ABC):
                 result_file = req_task_results_dir / filename
                 assert result_file.exists()
         finally:
-            await self._close_server(requestor_server)
-            await self._close_server(provider_server)
+            await requestor_client.shutdown()
+            await requestor_callbacks.wait_after_shutdown()
 
     @pytest.mark.asyncio
     async def test_one_subtasks_one_frame(self, tmpdir):
