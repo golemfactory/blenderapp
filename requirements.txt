@@ -1,6 +1,7 @@
 # I dunno why --extra-index-url is needed since, since it's present in the golem_blender_app
 # but it doesn't work without it
 --extra-index-url https://builds.golem.network
+# git+https://github.com/golemfactory/task-api@da1df90188ce033039b39a1b15b2a69dd9f2c77a#subdirectory=python
 -e image/golem_blender_app
 
 docker==3.7.0
