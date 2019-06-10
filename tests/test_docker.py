@@ -10,7 +10,11 @@ from golem_task_api import (
     RequestorAppCallbacks,
 )
 
-from .simulationbase import SimulationBase, task_flow_helper
+from .simulationbase import (
+    ExtendedRequestorAppCallbacks,
+    SimulationBase,
+    task_flow_helper,
+)
 
 TAG = 'blenderapp_test'
 
@@ -23,7 +27,7 @@ def is_docker_available():
     return True
 
 
-class DockerRequestorCallbacks(RequestorAppCallbacks):
+class DockerRequestorCallbacks(ExtendedRequestorAppCallbacks):
     def __init__(self, work_dir: Path):
         self._work_dir = work_dir
         self._container = None
@@ -78,7 +82,7 @@ class TestDocker(SimulationBase):
     def _get_requestor_app_callbacks(
             self,
             work_dir: Path,
-    ) -> RequestorAppCallbacks:
+    ) -> ExtendedRequestorAppCallbacks:
         return DockerRequestorCallbacks(work_dir)
 
     def _get_provider_app_callbacks(

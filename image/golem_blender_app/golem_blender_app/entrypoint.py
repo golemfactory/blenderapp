@@ -12,7 +12,9 @@ from golem_task_api import (
 from golem_blender_app.commands.benchmark import benchmark
 from golem_blender_app.commands.compute import compute
 from golem_blender_app.commands.create_task import create_task
+from golem_blender_app.commands.discard_subtasks import discard_subtasks
 from golem_blender_app.commands.get_subtask import get_next_subtask
+from golem_blender_app.commands.has_pending_subtasks import has_pending_subtasks
 from golem_blender_app.commands.verify import verify
 
 
@@ -34,8 +36,21 @@ class RequestorHandler(RequestorAppHandler):
             subtask_id: str) -> bool:
         return verify(task_work_dir, subtask_id)
 
+    async def discard_subtasks(
+            self,
+            task_work_dir: Path,
+            subtask_ids: List[str],
+    ) -> List[str]:
+        return discard_subtasks(task_work_dir, subtask_ids)
+
     async def run_benchmark(self, work_dir: Path) -> float:
         return benchmark(work_dir)
+
+    async def has_pending_subtasks(
+            self,
+            task_work_dir: Path,
+    ) -> bool:
+        return has_pending_subtasks(task_work_dir)
 
 
 class ProviderHandler(ProviderAppHandler):
