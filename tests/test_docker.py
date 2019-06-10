@@ -12,7 +12,7 @@ from golem_task_api import (
     RequestorAppClient,
 )
 
-from .simulationbase import SimulationBase
+from .simulationbase import SimulationBase, setup_helper
 
 TAG = 'blenderapp_test'
 NAME = 'blenderapp_test_container'
@@ -98,18 +98,18 @@ class TestDocker(SimulationBase):
         return DockerProviderCallbacks(work_dir)
 
     @pytest.mark.asyncio
-    async def test_benchmark(self, tmpdir):
-        print(tmpdir)
-        work_dir = Path(tmpdir)
+    async def test_benchmark(self, setup_helper):
+        print(setup_helper.work_dir)
 
         port = 50005
-        client_callbacks = self._get_requestor_app_callbacks(work_dir)
+        client_callbacks = \
+            self._get_requestor_app_callbacks(setup_helper.work_dir)
         client = RequestorAppClient(
             client_callbacks,
             port,
         )
         try:
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             score = await client.run_benchmark()
             assert score > 0
         finally:
