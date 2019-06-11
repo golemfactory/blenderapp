@@ -5,7 +5,7 @@ import shutil
 
 import pytest
 
-from .simulationbase import SimulationBase, setup_helper
+from .simulationbase import SimulationBase, task_flow_helper
 
 from golem_task_api import (
     ProviderAppCallbacks,
