@@ -1,4 +1,3 @@
-import asyncio
 import os
 from pathlib import Path
 from typing import Tuple
@@ -9,13 +8,11 @@ import pytest
 from golem_task_api import (
     ProviderAppCallbacks,
     RequestorAppCallbacks,
-    RequestorAppClient,
 )
 
-from .simulationbase import SimulationBase, setup_helper
+from .simulationbase import SimulationBase, task_flow_helper
 
 TAG = 'blenderapp_test'
-NAME = 'blenderapp_test_container'
 
 
 def is_docker_available():
@@ -29,10 +26,10 @@ def is_docker_available():
 class DockerRequestorCallbacks(RequestorAppCallbacks):
     def __init__(self, work_dir: Path):
         self._work_dir = work_dir
-        self._task = None
+        self._container = None
 
     def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
-        c = docker.from_env().containers.run(
+        self._container = docker.from_env().containers.run(
             TAG,
             command=command,
             volumes={
@@ -40,16 +37,17 @@ class DockerRequestorCallbacks(RequestorAppCallbacks):
             },
             detach=True,
             user=os.getuid(),
-            name=NAME,
         )
         api_client = docker.APIClient()
-        c_config = api_client.inspect_container(c.id)
+        c_config = api_client.inspect_container(self._container.id)
         ip_address = \
             c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
         return ip_address, port
 
     async def wait_after_shutdown(self) -> None:
-        pass
+        logs = self._container.logs().decode('utf-8')
+        print(logs)
+        self._container.remove(force=True)
 
 
 class DockerProviderCallbacks(ProviderAppCallbacks):
@@ -69,14 +67,6 @@ class DockerProviderCallbacks(ProviderAppCallbacks):
 
 @pytest.mark.skipif(not is_docker_available(), reason='docker not available')
 class TestDocker(SimulationBase):
-
-    def teardown_method(self):
-        c = docker.from_env().containers.get(NAME)
-        if c:
-            logs = c.logs().decode('utf-8')
-            print(logs)
-            c.kill()
-            c.remove()
 
     @classmethod
     def setup_class(cls):
@@ -98,20 +88,14 @@ class TestDocker(SimulationBase):
         return DockerProviderCallbacks(work_dir)
 
     @pytest.mark.asyncio
-    async def test_benchmark(self, setup_helper):
-        print(setup_helper.work_dir)
-
-        port = 50005
-        client_callbacks = \
-            self._get_requestor_app_callbacks(setup_helper.work_dir)
-        client = RequestorAppClient(
-            client_callbacks,
-            port,
-        )
-        try:
-            await asyncio.sleep(1)
-            score = await client.run_benchmark()
+    async def test_requestor_benchmark(self, task_flow_helper):
+        async with task_flow_helper.init_requestor(
+                self._get_requestor_app_callbacks):
+            score = await task_flow_helper.requestor_client.run_benchmark()
             assert score > 0
-        finally:
-            await client.shutdown()
-            await client_callbacks.wait_after_shutdown()
+
+    @pytest.mark.asyncio
+    async def test_provider_benchmark(self, task_flow_helper):
+        task_flow_helper.init_provider(self._get_provider_app_callbacks)
+        score = await task_flow_helper.run_provider_benchmark()
+        assert score > 0
