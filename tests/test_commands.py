@@ -5,7 +5,11 @@ import shutil
 
 import pytest
 
-from .simulationbase import SimulationBase, task_flow_helper
+from .simulationbase import (
+    ExtendedRequestorAppCallbacks,
+    SimulationBase,
+    task_flow_helper,
+)
 
 from golem_task_api import (
     ProviderAppCallbacks,
@@ -19,7 +23,7 @@ from golem_blender_app.entrypoint import (
 )
 
 
-class InlineRequestorCallbacks(RequestorAppCallbacks):
+class InlineRequestorCallbacks(ExtendedRequestorAppCallbacks):
     def __init__(self, work_dir: Path):
         self._work_dir = work_dir
         self._task = None
@@ -55,7 +59,7 @@ class TestCommands(SimulationBase):
     def _get_requestor_app_callbacks(
             self,
             work_dir: Path,
-    ) -> RequestorAppCallbacks:
+    ) -> ExtendedRequestorAppCallbacks:
         return InlineRequestorCallbacks(work_dir)
 
     def _get_provider_app_callbacks(
