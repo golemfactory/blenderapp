@@ -6,7 +6,7 @@ from golem_blender_app.render_tools import blender_render
 from golem_task_api import constants
 
 
-def compute(work_dir: Path, subtask_id: str, subtask_params: dict):
+def compute(work_dir: Path, subtask_id: str, subtask_params: dict) -> Path:
     network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
     params = subtask_params
     subtask_work_dir = work_dir / subtask_id
@@ -32,7 +32,10 @@ def compute(work_dir: Path, subtask_id: str, subtask_params: dict):
         },
     )
 
-    with zipfile.ZipFile(subtask_work_dir / 'result.zip', 'w') as zipf:
+    output_filepath = f'{subtask_id}.zip'
+    with zipfile.ZipFile(work_dir / output_filepath, 'w') as zipf:
         for filename in os.listdir(result_dir):
             zipf.write(result_dir / filename, filename)
             # FIXME delete raw files ?
+
+    return output_filepath

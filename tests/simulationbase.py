@@ -2,28 +2,29 @@ from async_generator import asynccontextmanager
 from pathlib import Path
 from typing import Callable, List, Tuple
 import abc
-import asyncio
+import contextlib
 import shutil
 import pytest
+import socket
+import time
 
 from golem_task_api import (
+    AppCallbacks,
     constants,
-    ProviderAppCallbacks,
     ProviderAppClient,
-    RequestorAppCallbacks,
     RequestorAppClient,
 )
 
 
-class ExtendedRequestorAppCallbacks(RequestorAppCallbacks):
-    @abc.abstractmethod
-    async def wait_after_shutdown(self) -> None:
-        """
-        After sending the Shutdown request one should wait for the server to
-        finish it's cleanup and shutdown completely.
-        E.g. for Docker app this should wait for the container to exit
-        """
-        pass
+def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        with contextlib.closing(
+                socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            if sock.connect_ex((host, port)) == 0:
+                return
+        time.sleep(0.05)
+    raise Exception(f'Could not connect to socket ({host}, {port})')
 
 
 class TaskFlowHelper:
@@ -37,26 +38,22 @@ class TaskFlowHelper:
 
     def init_provider(
             self,
-            get_app_callbacks: Callable[[Path], ProviderAppCallbacks],
+            get_app_callbacks: Callable[[Path], AppCallbacks],
     ) -> None:
         self.get_provider_app_callbacks = get_app_callbacks
 
     @asynccontextmanager
     async def init_requestor(
             self,
-            get_app_callbacks: Callable[[Path], ExtendedRequestorAppCallbacks],
+            get_app_callbacks: Callable[[Path], AppCallbacks],
             port: int = 50005,
     ):
         app_callbacks = get_app_callbacks(self.req_work_dir)
         self.requestor_client = RequestorAppClient(app_callbacks, port)
         try:
-            # Wait for the servers to be ready, I couldn't find a reliable
-            # way for that check
-            await asyncio.sleep(1)
             yield self.requestor_client
         finally:
             await self.requestor_client.shutdown()
-            await app_callbacks.wait_after_shutdown()
 
     def mkdir_requestor(self, task_id: str) -> None:
         self.req_task_work_dir = self.req_work_dir / task_id
@@ -98,12 +95,16 @@ class TaskFlowHelper:
             assert network_resource.exists()
             shutil.copy2(network_resource, self.prov_task_net_resources_dir)
 
-    def copy_result_from_provider(self, subtask_id: str) -> None:
-        result = self.prov_task_work_dir / subtask_id / 'result.zip'
+    def copy_result_from_provider(
+            self,
+            output_filepath: Path,
+            subtask_id: str,
+    ) -> None:
+        result = self.prov_task_work_dir / output_filepath
         assert result.exists()
         shutil.copy2(
             result,
-            self.req_task_net_results_dir / f'{subtask_id}.zip',
+            self.req_task_net_results_dir / f'{result.name}',
         )
 
     async def create_cube_task(self, task_id: str, task_params: dict) -> None:
@@ -133,14 +134,13 @@ class TaskFlowHelper:
         self.copy_resources_from_requestor(subtask_params)
         self.mkdir_provider_subtask(subtask_id)
 
-        await ProviderAppClient.compute(
+        output_filepath = await ProviderAppClient.compute(
             self.get_provider_app_callbacks(self.prov_task_work_dir),
-            self.prov_task_work_dir,
             task_id,
             subtask_id,
             subtask_params,
         )
-        self.copy_result_from_provider(subtask_id)
+        self.copy_result_from_provider(output_filepath, subtask_id)
 
         verdict = await self.requestor_client.verify(task_id, subtask_id)
         return (subtask_id, verdict)
@@ -148,7 +148,6 @@ class TaskFlowHelper:
     async def run_provider_benchmark(self) -> float:
         return await ProviderAppClient.run_benchmark(
             self.get_provider_app_callbacks(self.prov_work_dir),
-            self.prov_work_dir,
         )
 
     def check_results(
@@ -170,17 +169,10 @@ def task_flow_helper(tmpdir):
 class SimulationBase(abc.ABC):
 
     @abc.abstractmethod
-    def _get_requestor_app_callbacks(
+    def _get_app_callbacks(
             self,
             work_dir: Path,
-    ) -> ExtendedRequestorAppCallbacks:
-        pass
-
-    @abc.abstractmethod
-    def _get_provider_app_callbacks(
-            self,
-            work_dir: Path,
-    ) -> ProviderAppCallbacks:
+    ) -> AppCallbacks:
         pass
 
     @staticmethod
@@ -205,9 +197,9 @@ class SimulationBase(abc.ABC):
             task_flow_helper: TaskFlowHelper,
             expected_frames: list,
     ):
-        task_flow_helper.init_provider(self._get_provider_app_callbacks)
+        task_flow_helper.init_provider(self._get_app_callbacks)
         async with task_flow_helper.init_requestor(
-                self._get_requestor_app_callbacks) as requestor_client:
+                self._get_app_callbacks) as requestor_client:
             task_id = 'test_task_id123'
             await task_flow_helper.create_cube_task(task_id, task_params)
 
@@ -273,9 +265,9 @@ class SimulationBase(abc.ABC):
     async def test_discard(self, task_flow_helper):
         task_params = self._get_cube_params(4, "6-7")
         expected_frames = [6, 7]
-        task_flow_helper.init_provider(self._get_provider_app_callbacks)
+        task_flow_helper.init_provider(self._get_app_callbacks)
         async with task_flow_helper.init_requestor(
-                self._get_requestor_app_callbacks) as requestor_client:
+                self._get_app_callbacks) as requestor_client:
             task_id = 'test_discard_task_id123'
             await task_flow_helper.create_cube_task(task_id, task_params)
             subtask_ids = \
