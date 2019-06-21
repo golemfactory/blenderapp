@@ -14,7 +14,7 @@ def compute(work_dir: Path, subtask_id: str, subtask_params: dict) -> Path:
     result_dir = subtask_work_dir / 'result'
     result_dir.mkdir()
     for rid in params['resources']:
-        with zipfile.ZipFile(network_resources_dir / f'{rid}.zip', 'r') as zipf:
+        with zipfile.ZipFile(network_resources_dir / rid, 'r') as zipf:
             zipf.extractall(resources_dir)
 
     params['scene_file'] = resources_dir / params['scene_file']

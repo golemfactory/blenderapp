@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 import asyncio
 import sys
 
@@ -8,6 +8,7 @@ from golem_task_api import (
     RequestorAppHandler,
     entrypoint,
 )
+from golem_task_api import structs
 
 from golem_blender_app.commands.benchmark import benchmark
 from golem_blender_app.commands.compute import compute
@@ -29,7 +30,7 @@ class RequestorHandler(RequestorAppHandler):
     async def next_subtask(
             self,
             task_work_dir: Path,
-    ) -> Tuple[str, dict]:
+    ) -> structs.Subtask:
         return get_next_subtask(task_work_dir)
 
     async def verify(
