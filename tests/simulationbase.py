@@ -88,10 +88,9 @@ class TaskFlowHelper:
             self.req_task_resources_dir,
         )
 
-    def copy_resources_from_requestor(self, subtask_params: dict) -> None:
-        for resource_id in subtask_params['resources']:
-            network_resource = \
-                self.req_task_net_resources_dir / f'{resource_id}.zip'
+    def copy_resources_from_requestor(self, resources: List[str]) -> None:
+        for resource_id in resources:
+            network_resource = self.req_task_net_resources_dir / resource_id
             assert network_resource.exists()
             shutil.copy2(network_resource, self.prov_task_net_resources_dir)
 
@@ -127,23 +126,23 @@ class TaskFlowHelper:
     async def compute_next_subtask(self, task_id: str) -> Tuple[str, bool]:
         """ Returns (subtask_id, verification result) """
         assert await self.requestor_client.has_pending_subtasks(task_id)
-        subtask_id, subtask_params = \
-            await self.requestor_client.next_subtask(task_id)
-        assert subtask_params['resources'] == [0]
+        subtask = await self.requestor_client.next_subtask(task_id)
+        assert subtask.resources == ['0.zip']
 
-        self.copy_resources_from_requestor(subtask_params)
-        self.mkdir_provider_subtask(subtask_id)
+        self.copy_resources_from_requestor(subtask.resources)
+        self.mkdir_provider_subtask(subtask.subtask_id)
 
         output_filepath = await ProviderAppClient.compute(
             self.get_provider_app_callbacks(self.prov_task_work_dir),
             task_id,
-            subtask_id,
-            subtask_params,
+            subtask.subtask_id,
+            subtask.params,
         )
-        self.copy_result_from_provider(output_filepath, subtask_id)
+        self.copy_result_from_provider(output_filepath, subtask.subtask_id)
 
-        verdict = await self.requestor_client.verify(task_id, subtask_id)
-        return (subtask_id, verdict)
+        verdict = \
+            await self.requestor_client.verify(task_id, subtask.subtask_id)
+        return (subtask.subtask_id, verdict)
 
     async def run_provider_benchmark(self) -> float:
         return await ProviderAppClient.run_benchmark(

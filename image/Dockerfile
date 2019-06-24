@@ -43,7 +43,7 @@ RUN pip install -r /tmp/requirements.txt
 # Use following lines to work with the unreleased task-api module
 # RUN apt-get install -y git
 # RUN pip uninstall -y golem-task-api
-# RUN pip install git+https://github.com/golemfactory/task-api@5c4d21309c68f589d4138ad8bce71c6a83c82bb2#subdirectory=python
+# RUN pip install git+https://github.com/golemfactory/task-api@ab0c62cf962e4c8826221ca6a082a2cc262a6e83#subdirectory=python
 
 # Check to see that all libraries are available
 # We don't need libgfortran

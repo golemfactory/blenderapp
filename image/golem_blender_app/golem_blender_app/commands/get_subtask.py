@@ -2,10 +2,12 @@ from pathlib import Path
 from typing import List
 import json
 
+from golem_task_api import structs
+
 from golem_blender_app.commands import utils
 
 
-def get_next_subtask(work_dir: Path):
+def get_next_subtask(work_dir: Path) -> structs.Subtask:
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
     with utils.get_db_connection(work_dir) as db:
@@ -31,6 +33,7 @@ def get_next_subtask(work_dir: Path):
     min_y = (subtask_num % parts) / parts
     max_y = (subtask_num % parts + 1) / parts
 
+    resources = ['0.zip']
     subtask_params = {
         "scene_file": task_params['scene_file'],
         "resolution": task_params['resolution'],
@@ -40,13 +43,17 @@ def get_next_subtask(work_dir: Path):
         "output_format": task_params['format'],
         "borders": [0.0, min_y, 1.0, max_y],
 
-        "resources": [0],
+        "resources": resources,
     }
 
     with open(work_dir / f'subtask{subtask_id}.json', 'w') as f:
         json.dump(subtask_params, f)
 
-    return subtask_id, subtask_params
+    return structs.Subtask(
+        subtask_id=subtask_id,
+        params=subtask_params,
+        resources=resources,
+    )
 
 
 def _choose_frames(
