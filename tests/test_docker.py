@@ -32,16 +32,25 @@ class DockerCallbacks(AppCallbacks):
         self._container = None
 
     def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
+        volume_name = 'DESKTOP-EHQJOO8/C37A161EDD52B4F2C7C59E6144A47595/test2'
+        docker.from_env().volumes.create(
+            name=volume_name,
+            driver='cifs',
+            driver_opts={
+                'username': 'golem-docker',
+                'password': 'golem-docker'
+            }
+        )
         self._container = docker.from_env().containers.run(
             TAG,
             command=command,
             volumes={
-                str(self._work_dir): {'bind': '/golem/work', 'mode': 'rw'}
+                volume_name: {'bind': '/golem/work', 'mode': 'rw'}
             },
             detach=True,
-            user=os.getuid(),
+            # user=os.getuid(),
         )
-        api_client = docker.APIClient()
+        api_client = docker.from_env().api
         c_config = api_client.inspect_container(self._container.id)
         ip_address = \
             c_config['NetworkSettings']['Networks']['bridge']['IPAddress']

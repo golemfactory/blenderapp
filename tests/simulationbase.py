@@ -30,10 +30,13 @@ def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
 class TaskFlowHelper:
     def __init__(self, work_dir: Path) -> None:
         print('workdir:', work_dir)
+        work_dir = Path('c:\\users\\golem\\appdata\\local\\golem\\golem\\default\\rinkeby\\computerres\\test2')
         self.work_dir = work_dir
         self.req_work_dir = work_dir / 'requestor'
+        shutil.rmtree(self.req_work_dir, ignore_errors=True)
         self.req_work_dir.mkdir()
         self.prov_work_dir = work_dir / 'provider'
+        shutil.rmtree(self.prov_work_dir, ignore_errors=True)
         self.prov_work_dir.mkdir()
 
     def init_provider(
