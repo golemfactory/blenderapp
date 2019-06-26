@@ -49,11 +49,16 @@ class DockerCallbacks(AppCallbacks):
             },
             detach=True,
             # user=os.getuid(),
+            ports={
+                port: ('127.0.0.1', None)
+            }
         )
         api_client = docker.from_env().api
         c_config = api_client.inspect_container(self._container.id)
-        ip_address = \
-            c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
+        ports = \
+            c_config['NetworkSettings']['Ports'][f'{port}/tcp'][0]
+        ip_address = ports['HostIp']
+        port = int(ports['HostPort'])
         wait_until_socket_open(ip_address, port)
         return ip_address, port
 
