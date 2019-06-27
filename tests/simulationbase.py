@@ -17,7 +17,7 @@ from golem_task_api import (
 
 
 def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
-    time.sleep(1)
+    time.sleep(3)
     return
     deadline = time.time() + timeout
     while time.time() < deadline:
@@ -32,7 +32,7 @@ def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
 class TaskFlowHelper:
     def __init__(self, work_dir: Path) -> None:
         print('workdir:', work_dir)
-        work_dir = Path('c:\\users\\golem\\appdata\\local\\golem\\golem\\default\\rinkeby\\computerres\\test2')
+        work_dir = Path('c:\\users\\golem\\appdata\\local\\golem\\golem\\default\\rinkeby\\computerres\\test3')
         self.work_dir = work_dir
         self.req_work_dir = work_dir / 'requestor'
         shutil.rmtree(self.req_work_dir, ignore_errors=True)

@@ -32,7 +32,8 @@ class DockerCallbacks(AppCallbacks):
         self._container = None
 
     def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
-        volume_name = 'DESKTOP-EHQJOO8/C37A161EDD52B4F2C7C59E6144A47595/test2'
+        role = command.split()[0]
+        volume_name = f'DESKTOP-EHQJOO8/C37A161EDD52B4F2C7C59E6144A47595/test3/{role}/{"test_task_id123" if role == "provider" else ""}'
         docker.from_env().volumes.create(
             name=volume_name,
             driver='cifs',
@@ -50,14 +51,14 @@ class DockerCallbacks(AppCallbacks):
             detach=True,
             # user=os.getuid(),
             ports={
-                port: ('127.0.0.1', None)
+                port: ('0.0.0.0', None)
             }
         )
         api_client = docker.from_env().api
         c_config = api_client.inspect_container(self._container.id)
         ports = \
             c_config['NetworkSettings']['Ports'][f'{port}/tcp'][0]
-        ip_address = ports['HostIp']
+        ip_address = '192.168.124.41' #ports['HostIp']
         port = int(ports['HostPort'])
         wait_until_socket_open(ip_address, port)
         return ip_address, port
