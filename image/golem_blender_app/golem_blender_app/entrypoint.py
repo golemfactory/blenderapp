@@ -6,9 +6,10 @@ import sys
 from golem_task_api import (
     ProviderAppHandler,
     RequestorAppHandler,
+    constants as api_constants,
     entrypoint,
+    structs,
 )
-from golem_task_api import structs
 
 from golem_blender_app.commands.benchmark import benchmark
 from golem_blender_app.commands.compute import compute
@@ -81,7 +82,7 @@ async def main(
 
 if __name__ == '__main__':
     asyncio.get_event_loop().run_until_complete(main(
-        Path('/golem/work'),
+        Path(f'/{api_constants.WORK_DIR}'),
         sys.argv[1:],
         RequestorHandler(),
         ProviderHandler(),
