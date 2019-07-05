@@ -7,6 +7,7 @@ import pytest
 
 from golem_task_api import (
     AppCallbacks,
+    constants as api_constants,
 )
 
 from .simulationbase import (
@@ -36,7 +37,10 @@ class DockerCallbacks(AppCallbacks):
             TAG,
             command=command,
             volumes={
-                str(self._work_dir): {'bind': '/golem/work', 'mode': 'rw'}
+                str(self._work_dir): {
+                    'bind': f'/{api_constants.WORK_DIR}',
+                    'mode': 'rw',
+                }
             },
             detach=True,
             user=os.getuid(),
