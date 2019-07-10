@@ -7,14 +7,19 @@ from golem_blender_app.commands import utils
 from golem_task_api import constants
 
 
-def create_task(work_dir: Path, params: dict) -> None:
+def create_task(work_dir: Path, max_subtasks_count: int, params: dict) -> None:
     resources_dir = work_dir / constants.RESOURCES_DIR
     network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
+
+    frame_count = len(utils.string_to_frames(params['frames']))
+    if max_subtasks_count <= frame_count:
+        subtasks_count = max_subtasks_count
+    else:
+        subtasks_count = max_subtasks_count // frame_count * frame_count
+    params['subtasks_count'] = subtasks_count
     with open(work_dir / 'task_params.json', 'w') as f:
         json.dump(params, f)
-    frame_count = len(utils.string_to_frames(params['frames']))
-    subtasks_count = params['subtasks_count']
-    assert subtasks_count <= frame_count or subtasks_count % frame_count == 0
+
     with zipfile.ZipFile(network_resources_dir / '0.zip', 'w') as zipf:
         for resource in params['resources']:
             resource_path = resources_dir / resource
