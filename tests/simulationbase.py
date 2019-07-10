@@ -106,13 +106,22 @@ class TaskFlowHelper:
             self.req_task_net_results_dir / f'{result.name}',
         )
 
-    async def create_cube_task(self, task_id: str, task_params: dict) -> None:
+    async def create_cube_task(
+            self,
+            task_id: str,
+            max_subtasks_count: int,
+            task_params: dict,
+    ) -> None:
         self.mkdir_requestor(task_id)
         self.mkdir_provider_task(task_id)
 
         self.put_cube_to_resources()
 
-        await self.requestor_client.create_task(task_id, task_params)
+        await self.requestor_client.create_task(
+            task_id,
+            max_subtasks_count,
+            task_params,
+        )
 
     async def compute_remaining_subtasks(self, task_id: str) -> List[str]:
         """ Returns list of subtask IDs """
@@ -176,11 +185,9 @@ class SimulationBase(abc.ABC):
 
     @staticmethod
     def _get_cube_params(
-            subtasks_count: int,
             frames: str,
             output_format: str="png"):
         return {
-            "subtasks_count": subtasks_count,
             "format": output_format,
             "resolution": [1000, 600],
             "frames": frames,
@@ -192,6 +199,7 @@ class SimulationBase(abc.ABC):
 
     async def _simulate(
             self,
+            max_subtasks_count: int,
             task_params: dict,
             task_flow_helper: TaskFlowHelper,
             expected_frames: list,
@@ -200,11 +208,15 @@ class SimulationBase(abc.ABC):
         async with task_flow_helper.init_requestor(
                 self._get_app_callbacks) as requestor_client:
             task_id = 'test_task_id123'
-            await task_flow_helper.create_cube_task(task_id, task_params)
+            await task_flow_helper.create_cube_task(
+                task_id,
+                max_subtasks_count,
+                task_params,
+            )
 
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
-            assert len(subtask_ids) <= task_params['subtasks_count']
+            assert len(subtask_ids) <= max_subtasks_count
 
             assert not await requestor_client.has_pending_subtasks(task_id)
             task_flow_helper.check_results(
@@ -215,7 +227,8 @@ class SimulationBase(abc.ABC):
     @pytest.mark.asyncio
     async def test_one_subtasks_one_frame(self, task_flow_helper):
         await self._simulate(
-            self._get_cube_params(1, "1"),
+            1,
+            self._get_cube_params("1"),
             task_flow_helper,
             [1],
         )
@@ -223,7 +236,8 @@ class SimulationBase(abc.ABC):
     @pytest.mark.asyncio
     async def test_one_subtasks_three_frames(self, task_flow_helper):
         await self._simulate(
-            self._get_cube_params(1, "2-3;8"),
+            1,
+            self._get_cube_params("2-3;8"),
             task_flow_helper,
             [2, 3, 8],
         )
@@ -231,7 +245,8 @@ class SimulationBase(abc.ABC):
     @pytest.mark.asyncio
     async def test_two_subtasks_one_frame_png(self, task_flow_helper):
         await self._simulate(
-            self._get_cube_params(2, "5"),
+            2,
+            self._get_cube_params("5"),
             task_flow_helper,
             [5],
         )
@@ -239,7 +254,8 @@ class SimulationBase(abc.ABC):
     @pytest.mark.asyncio
     async def test_two_subtasks_one_frame_exr(self, task_flow_helper):
         await self._simulate(
-            self._get_cube_params(2, "5", "exr"),
+            2,
+            self._get_cube_params("5", "exr"),
             task_flow_helper,
             [5],
         )
@@ -247,7 +263,8 @@ class SimulationBase(abc.ABC):
     @pytest.mark.asyncio
     async def test_two_subtasks_two_frames(self, task_flow_helper):
         await self._simulate(
-            self._get_cube_params(2, "5;9"),
+            2,
+            self._get_cube_params("5;9"),
             task_flow_helper,
             [5, 9],
         )
@@ -255,20 +272,26 @@ class SimulationBase(abc.ABC):
     @pytest.mark.asyncio
     async def test_four_subtasks_two_frames(self, task_flow_helper):
         await self._simulate(
-            self._get_cube_params(4, "6-7"),
+            4,
+            self._get_cube_params("6-7"),
             task_flow_helper,
             [6, 7],
         )
 
     @pytest.mark.asyncio
     async def test_discard(self, task_flow_helper):
-        task_params = self._get_cube_params(4, "6-7")
+        max_subtasks_count = 4
+        task_params = self._get_cube_params("6-7")
         expected_frames = [6, 7]
         task_flow_helper.init_provider(self._get_app_callbacks)
         async with task_flow_helper.init_requestor(
                 self._get_app_callbacks) as requestor_client:
             task_id = 'test_discard_task_id123'
-            await task_flow_helper.create_cube_task(task_id, task_params)
+            await task_flow_helper.create_cube_task(
+                task_id,
+                max_subtasks_count,
+                task_params,
+            )
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
             task_flow_helper.check_results(
