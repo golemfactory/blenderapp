@@ -27,7 +27,7 @@ def is_docker_available():
     return True
 
 
-class DockerCallbacks(TaskApiService):
+class DockerTaskApiService(TaskApiService):
     def __init__(self, work_dir: Path):
         self._work_dir = work_dir
         self._container = None
@@ -72,7 +72,7 @@ class TestDocker(SimulationBase):
             self,
             work_dir: Path,
     ) -> TaskApiService:
-        return DockerCallbacks(work_dir)
+         return DockerTaskApiService(work_dir)
 
     @pytest.mark.asyncio
     async def test_requestor_benchmark(self, task_flow_helper):
