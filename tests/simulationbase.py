@@ -9,7 +9,7 @@ import socket
 import time
 
 from golem_task_api import (
-    AppCallbacks,
+    TaskApiService,
     constants,
     ProviderAppClient,
     RequestorAppClient,
@@ -38,18 +38,18 @@ class TaskFlowHelper:
 
     def init_provider(
             self,
-            get_app_callbacks: Callable[[Path], AppCallbacks],
+            get_task_api_service: Callable[[Path], TaskApiService],
     ) -> None:
-        self.get_provider_app_callbacks = get_app_callbacks
+        self.get_provider_task_api_service = get_task_api_service
 
     @asynccontextmanager
     async def init_requestor(
             self,
-            get_app_callbacks: Callable[[Path], AppCallbacks],
+            get_task_api_service: Callable[[Path], TaskApiService],
             port: int = 50005,
     ):
-        app_callbacks = get_app_callbacks(self.req_work_dir)
-        self.requestor_client = RequestorAppClient(app_callbacks, port)
+        task_api_service = get_task_api_service(self.req_work_dir)
+        self.requestor_client = RequestorAppClient(task_api_service, port)
         try:
             yield self.requestor_client
         finally:
@@ -142,7 +142,7 @@ class TaskFlowHelper:
         self.mkdir_provider_subtask(subtask.subtask_id)
 
         output_filepath = await ProviderAppClient.compute(
-            self.get_provider_app_callbacks(self.prov_task_work_dir),
+            self.get_provider_task_api_service(self.prov_task_work_dir),
             task_id,
             subtask.subtask_id,
             subtask.params,
@@ -155,7 +155,7 @@ class TaskFlowHelper:
 
     async def run_provider_benchmark(self) -> float:
         return await ProviderAppClient.run_benchmark(
-            self.get_provider_app_callbacks(self.prov_work_dir),
+            self.get_provider_task_api_service(self.prov_work_dir),
         )
 
     def check_results(
@@ -177,10 +177,10 @@ def task_flow_helper(tmpdir):
 class SimulationBase(abc.ABC):
 
     @abc.abstractmethod
-    def _get_app_callbacks(
+    def _get_task_api_service(
             self,
             work_dir: Path,
-    ) -> AppCallbacks:
+    ) -> TaskApiService:
         pass
 
     @staticmethod
@@ -204,9 +204,9 @@ class SimulationBase(abc.ABC):
             task_flow_helper: TaskFlowHelper,
             expected_frames: list,
     ):
-        task_flow_helper.init_provider(self._get_app_callbacks)
+        task_flow_helper.init_provider(self._get_task_api_service)
         async with task_flow_helper.init_requestor(
-                self._get_app_callbacks) as requestor_client:
+                self._get_task_api_service) as requestor_client:
             task_id = 'test_task_id123'
             await task_flow_helper.create_cube_task(
                 task_id,
@@ -283,9 +283,9 @@ class SimulationBase(abc.ABC):
         max_subtasks_count = 4
         task_params = self._get_cube_params("6-7")
         expected_frames = [6, 7]
-        task_flow_helper.init_provider(self._get_app_callbacks)
+        task_flow_helper.init_provider(self._get_task_api_service)
         async with task_flow_helper.init_requestor(
-                self._get_app_callbacks) as requestor_client:
+                self._get_task_api_service) as requestor_client:
             task_id = 'test_discard_task_id123'
             await task_flow_helper.create_cube_task(
                 task_id,

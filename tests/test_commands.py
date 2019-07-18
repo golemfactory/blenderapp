@@ -13,7 +13,7 @@ from .simulationbase import (
 )
 
 from golem_task_api import (
-    AppCallbacks,
+    TaskApiService,
 )
 
 from golem_blender_app.entrypoint import (
@@ -23,7 +23,7 @@ from golem_blender_app.entrypoint import (
 )
 
 
-class InlineAppCallbacks(AppCallbacks):
+class InlineTaskApiService(TaskApiService):
     def __init__(self, work_dir: Path):
         self._work_dir = work_dir
         self._thread = None
@@ -38,7 +38,7 @@ class InlineAppCallbacks(AppCallbacks):
             requestor_handler=RequestorHandler(),
         ))
 
-    def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
+    def start(self, command: str, port: int) -> Tuple[str, int]:
         self._thread = threading.Thread(
             target=self._spawn,
             args=(command,),
@@ -49,7 +49,7 @@ class InlineAppCallbacks(AppCallbacks):
         wait_until_socket_open(host, port)
         return host, port
 
-    async def wait_after_shutdown(self) -> None:
+    async def wait_until_shutdown_complete(self) -> None:
         self._thread.join(timeout=3)
 
 
@@ -57,8 +57,8 @@ class InlineAppCallbacks(AppCallbacks):
     shutil.which('blender') is None,
     reason='blender not available')
 class TestCommands(SimulationBase):
-    def _get_app_callbacks(
+    def _get_task_api_service(
             self,
             work_dir: Path,
-    ) -> AppCallbacks:
-        return InlineAppCallbacks(work_dir)
+    ) -> TaskApiService:
+        return InlineTaskApiService(work_dir)
