@@ -6,7 +6,7 @@ import docker
 import pytest
 
 from golem_task_api import (
-    AppCallbacks,
+    TaskApiService,
     constants as api_constants,
 )
 
@@ -27,12 +27,12 @@ def is_docker_available():
     return True
 
 
-class DockerCallbacks(AppCallbacks):
+class DockerTaskApiService(TaskApiService):
     def __init__(self, work_dir: Path):
         self._work_dir = work_dir
         self._container = None
 
-    def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
+    def start(self, command: str, port: int) -> Tuple[str, int]:
         self._container = docker.from_env().containers.run(
             TAG,
             command=command,
@@ -52,7 +52,7 @@ class DockerCallbacks(AppCallbacks):
         wait_until_socket_open(ip_address, port)
         return ip_address, port
 
-    async def wait_after_shutdown(self) -> None:
+    async def wait_until_shutdown_complete(self) -> None:
         logs = self._container.logs().decode('utf-8')
         print(logs)
         self._container.remove(force=True)
@@ -68,20 +68,20 @@ class TestDocker(SimulationBase):
             tag=TAG,
         )
 
-    def _get_app_callbacks(
+    def _get_task_api_service(
             self,
             work_dir: Path,
-    ) -> AppCallbacks:
-        return DockerCallbacks(work_dir)
+    ) -> TaskApiService:
+         return DockerTaskApiService(work_dir)
 
     @pytest.mark.asyncio
     async def test_requestor_benchmark(self, task_flow_helper):
-        async with task_flow_helper.init_requestor(self._get_app_callbacks):
+        async with task_flow_helper.init_requestor(self._get_task_api_service):
             score = await task_flow_helper.requestor_client.run_benchmark()
             assert score > 0
 
     @pytest.mark.asyncio
     async def test_provider_benchmark(self, task_flow_helper):
-        task_flow_helper.init_provider(self._get_app_callbacks)
+        task_flow_helper.init_provider(self._get_task_api_service)
         score = await task_flow_helper.run_provider_benchmark()
         assert score > 0
