@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Tuple, Optional
 import json
 import os
 import shutil
@@ -12,7 +13,7 @@ from golem_blender_app.verifier_tools import verificator
 from golem_task_api import constants
 
 
-def verify(work_dir: Path, subtask_id: str) -> bool:
+def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
     resources_dir = work_dir / constants.RESOURCES_DIR
     results_dir = work_dir / constants.RESULTS_DIR
     network_results_dir = work_dir / constants.NETWORK_RESULTS_DIR
@@ -56,7 +57,8 @@ def verify(work_dir: Path, subtask_id: str) -> bool:
                 subtask_num,
                 utils.SubtaskStatus.PENDING,
             )
-            return verdict
+            # TODO: provide some extra info why verification failed
+            return verdict, None
         utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
@@ -67,7 +69,7 @@ def verify(work_dir: Path, subtask_id: str) -> bool:
             subtask_results_dir,
             results_dir,
         )
-        return verdict
+        return verdict, None
 
 
 def _collect_results(
