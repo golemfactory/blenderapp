@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, List, Tuple
 import abc
 import contextlib
+import grpclib
 import shutil
 import pytest
 import socket
@@ -283,6 +284,18 @@ class SimulationBase(abc.ABC):
             task_flow_helper,
             [6, 7],
         )
+
+    @pytest.mark.asyncio
+    async def test_app_error(self, task_flow_helper):
+        with pytest.raises(
+                grpclib.exceptions.GRPCError,
+                match="invalid literal for int\(\) with base 10: 'asd'"):
+            await self._simulate(
+                1,
+                self._get_cube_params("asd"),  # incorrect frames
+                task_flow_helper,
+                [],
+            )
 
     @pytest.mark.asyncio
     async def test_discard(self, task_flow_helper):
