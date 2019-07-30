@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Tuple, Optional
 import asyncio
 import sys
 
@@ -39,7 +39,7 @@ class RequestorHandler(RequestorAppHandler):
             self,
             task_work_dir: Path,
             subtask_id: str,
-    ) -> bool:
+    ) -> Tuple[bool, Optional[str]]:
         return verify(task_work_dir, subtask_id)
 
     async def discard_subtasks(
