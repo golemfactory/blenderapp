@@ -82,11 +82,9 @@ class TaskFlowHelper:
         prov_subtask_work_dir = self.prov_task_work_dir / subtask_id
         prov_subtask_work_dir.mkdir()
 
-    def put_cube_to_resources(self) -> None:
-        shutil.copy2(
-            Path('.') / 'image' / 'benchmark' / 'cube.blend',
-            self.req_task_resources_dir,
-        )
+    def put_resources_to_requestor(self, resources: List[Path]) -> None:
+        for resource in resources:
+            shutil.copy2(resource, self.req_task_resources_dir)
 
     def copy_resources_from_requestor(self, resources: List[str]) -> None:
         for resource_id in resources:
@@ -106,16 +104,17 @@ class TaskFlowHelper:
             self.req_task_net_results_dir / f'{result.name}',
         )
 
-    async def create_cube_task(
+    async def create_task(
             self,
             task_id: str,
             max_subtasks_count: int,
+            resources: List[Path],
             task_params: dict,
     ) -> None:
         self.mkdir_requestor(task_id)
         self.mkdir_provider_task(task_id)
 
-        self.put_cube_to_resources()
+        self.put_resources_to_requestor(resources)
 
         await self.requestor_client.create_task(
             task_id,
@@ -158,16 +157,6 @@ class TaskFlowHelper:
             self.get_provider_task_api_service(self.prov_work_dir),
         )
 
-    def check_results(
-            self,
-            output_format: str,
-            expected_frames: List[int],
-    ) -> None:
-        for frame in expected_frames:
-            filename = f'result{frame:04d}.{output_format}'
-            result_file = self.req_task_results_dir / filename
-            assert result_file.exists()
-
 
 @pytest.fixture
 def task_flow_helper(tmpdir):
@@ -197,6 +186,21 @@ class SimulationBase(abc.ABC):
             ]
         }
 
+    @staticmethod
+    def _get_cube_resources() -> List[Path]:
+        return [Path(__file__).parent / 'resources' / 'cube.blend']
+
+    @staticmethod
+    def check_results(
+            req_task_results_dir: Path,
+            output_format: str,
+            expected_frames: List[int],
+    ) -> None:
+        for frame in expected_frames:
+            filename = f'result{frame:04d}.{output_format}'
+            result_file = req_task_results_dir / filename
+            assert result_file.exists()
+
     async def _simulate(
             self,
             max_subtasks_count: int,
@@ -208,9 +212,10 @@ class SimulationBase(abc.ABC):
         async with task_flow_helper.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_task_id123'
-            await task_flow_helper.create_cube_task(
+            await task_flow_helper.create_task(
                 task_id,
                 max_subtasks_count,
+                self._get_cube_resources(),
                 task_params,
             )
 
@@ -219,7 +224,8 @@ class SimulationBase(abc.ABC):
             assert len(subtask_ids) <= max_subtasks_count
 
             assert not await requestor_client.has_pending_subtasks(task_id)
-            task_flow_helper.check_results(
+            self.check_results(
+                task_flow_helper.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -287,14 +293,16 @@ class SimulationBase(abc.ABC):
         async with task_flow_helper.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_discard_task_id123'
-            await task_flow_helper.create_cube_task(
+            await task_flow_helper.create_task(
                 task_id,
                 max_subtasks_count,
+                self._get_cube_resources(),
                 task_params,
             )
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
-            task_flow_helper.check_results(
+            self.check_results(
+                task_flow_helper.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -306,7 +314,8 @@ class SimulationBase(abc.ABC):
             assert await requestor_client.has_pending_subtasks(task_id)
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
-            task_flow_helper.check_results(
+            self.check_results(
+                task_flow_helper.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -321,7 +330,8 @@ class SimulationBase(abc.ABC):
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
             assert len(subtask_ids) == 1
-            task_flow_helper.check_results(
+            self.check_results(
+                task_flow_helper.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
