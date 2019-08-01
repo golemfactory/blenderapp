@@ -29,6 +29,9 @@ RUN apt-get update \
     zlib1g-dev \
     libopenexr-dev
 
+# Uncomment to install the task-api repo from a git ref
+RUN apt-get install -y git
+
 # Check to see that all libraries are available
 RUN ! ldd /blender/blender | grep "=> not found"
 

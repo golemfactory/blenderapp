@@ -36,11 +36,17 @@ class TaskFlowHelper:
         self.prov_work_dir = work_dir / 'provider'
         self.prov_work_dir.mkdir()
 
-    def init_provider(
+    @asynccontextmanager
+    async def init_provider(
             self,
             get_task_api_service: Callable[[Path], TaskApiService],
     ) -> None:
-        self.get_provider_task_api_service = get_task_api_service
+        task_api_service = get_task_api_service(self.req_work_dir)
+        self.provider_client = ProviderAppClient(task_api_service)
+        try:
+            yield self.provider_client
+        finally:
+            await self.provider_client.shutdown()
 
     @asynccontextmanager
     async def init_requestor(
@@ -153,9 +159,13 @@ class TaskFlowHelper:
         return (subtask.subtask_id, verdict)
 
     async def run_provider_benchmark(self) -> float:
-        return await ProviderAppClient.run_benchmark(
-            self.get_provider_task_api_service(self.prov_work_dir),
-        )
+        print('run_provider_benchmark')
+        return await self.provider_client.run_benchmark()
+
+
+    async def shutdown_provider(self) -> None:
+        print('shutdown_provider')
+        return await self.provider_client.shutdown()
 
 
 @pytest.fixture

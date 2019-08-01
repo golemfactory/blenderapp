@@ -1,3 +1,4 @@
+import asyncio
 import os
 from pathlib import Path
 from typing import Tuple
@@ -82,6 +83,20 @@ class TestDocker(SimulationBase):
 
     @pytest.mark.asyncio
     async def test_provider_benchmark(self, task_flow_helper):
-        task_flow_helper.init_provider(self._get_task_api_service)
-        score = await task_flow_helper.run_provider_benchmark()
-        assert score > 0
+        print("init_provider")
+        async with task_flow_helper.init_provider(self._get_task_api_service):
+            print("await benchmark")
+            score = await task_flow_helper.run_provider_benchmark()
+            assert score > 0
+
+    @pytest.mark.asyncio
+    async def test_provider_shutdown_in_benchmark(self, task_flow_helper):
+        async with task_flow_helper.init_provider(self._get_task_api_service):
+            benchmark_defer = task_flow_helper.run_provider_benchmark()
+            shutdown_defer = task_flow_helper.shutdown_provider()
+            done, pending = await asyncio.wait(
+                [shutdown_defer, benchmark_defer],
+                return_when=asyncio.FIRST_COMPLETED)
+            print('done=', done)
+            print('pending=', pending)
+            assert benchmark_defer.done() == False
