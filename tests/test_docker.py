@@ -1,6 +1,7 @@
 import asyncio
 import os
 from pathlib import Path
+from sys import platform
 from typing import Tuple
 
 import docker
@@ -48,8 +49,12 @@ class DockerTaskApiService(TaskApiService):
         )
         api_client = docker.APIClient()
         c_config = api_client.inspect_container(self._container.id)
-        ip_address = \
-            c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
+        print('c_config: ', c_config)
+        if platform == 'darwin':
+            ip_address = '127.0.0.1'
+        else:
+            ip_address = \
+                c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
         try:
             wait_until_socket_open(ip_address, port)
         except:
