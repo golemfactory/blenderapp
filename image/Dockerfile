@@ -29,9 +29,6 @@ RUN apt-get update \
     zlib1g-dev \
     libopenexr-dev
 
-# Uncomment to install the task-api repo from a git ref
-RUN apt-get install -y git
-
 # Check to see that all libraries are available
 RUN ! ldd /blender/blender | grep "=> not found"
 
@@ -41,12 +38,9 @@ RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 RUN pip install --upgrade pip
 COPY golem_blender_app/requirements.txt /tmp
+# Use following lines to work with the unreleased task-api module in requirements.txt
+RUN apt-get install -y git
 RUN pip install -r /tmp/requirements.txt
-
-# Use following lines to work with the unreleased task-api module
-# RUN apt-get install -y git
-# RUN pip uninstall -y golem-task-api
-# RUN pip install git+https://github.com/golemfactory/task-api@789d221e77371ec93694099fd5ab3a243594c6ce#subdirectory=python
 
 # Check to see that all libraries are available
 # We don't need libgfortran
