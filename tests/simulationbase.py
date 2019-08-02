@@ -345,3 +345,25 @@ class SimulationBase(abc.ABC):
                 task_params["format"],
                 expected_frames,
             )
+
+    @pytest.mark.asyncio
+    async def test_provider_shutdown_in_benchmark(self, task_flow_helper):
+        async with task_flow_helper.init_provider(self._get_task_api_service):
+            benchmark_defer = asyncio.ensure_future(task_flow_helper.run_provider_benchmark())
+            async def _shutdown_in_5s():
+                print('before sleep')
+                await asyncio.sleep(5.0)
+                print('after sleep')
+                await task_flow_helper.shutdown_provider()
+                print('after shutdown')
+                return None
+            shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
+            done, pending = await asyncio.wait(
+                [shutdown_defer, benchmark_defer],
+                return_when=asyncio.FIRST_COMPLETED)
+            print('done=', done)
+            print('pending=', pending)
+            assert benchmark_defer in done
+            assert shutdown_defer in pending
+            await shutdown_defer
+            print('DONE')
