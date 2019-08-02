@@ -40,7 +40,7 @@ jobs:
            name: Run tests
            command: |
              . .venv/bin/activate
-             python -m pytest
+             python -m pytest -svx --log-cli-level=DEBUG
        - run:
            name: Inspect Docker image size
            command: |

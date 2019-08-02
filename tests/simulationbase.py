@@ -1,3 +1,4 @@
+import asyncio
 from async_generator import asynccontextmanager
 from pathlib import Path
 from typing import Callable, List, Tuple
@@ -36,13 +37,17 @@ class TaskFlowHelper:
         self.prov_work_dir = work_dir / 'provider'
         self.prov_work_dir.mkdir()
 
-    @asynccontextmanager
-    async def init_provider(
+    def init_provider(
             self,
             get_task_api_service: Callable[[Path], TaskApiService],
+            task_id
     ) -> None:
-        task_api_service = get_task_api_service(self.req_work_dir)
-        self.provider_client = ProviderAppClient(task_api_service)
+        self.mkdir_provider_task(task_id)
+        self._task_api_service = get_task_api_service(self.prov_task_work_dir)
+
+    @asynccontextmanager
+    async def start_provider(self) -> None:
+        self.provider_client = ProviderAppClient(self._task_api_service)
         try:
             yield self.provider_client
         finally:
@@ -118,7 +123,6 @@ class TaskFlowHelper:
             task_params: dict,
     ) -> None:
         self.mkdir_requestor(task_id)
-        self.mkdir_provider_task(task_id)
 
         self.put_resources_to_requestor(resources)
 
@@ -146,12 +150,12 @@ class TaskFlowHelper:
         self.copy_resources_from_requestor(subtask.resources)
         self.mkdir_provider_subtask(subtask.subtask_id)
 
-        output_filepath = await ProviderAppClient.compute(
-            self.get_provider_task_api_service(self.prov_task_work_dir),
-            task_id,
-            subtask.subtask_id,
-            subtask.params,
-        )
+        async with self.start_provider():
+            output_filepath = await self.provider_client.compute(
+                task_id,
+                subtask.subtask_id,
+                subtask.params,
+            )
         self.copy_result_from_provider(output_filepath, subtask.subtask_id)
 
         verdict = \
@@ -159,12 +163,12 @@ class TaskFlowHelper:
         return (subtask.subtask_id, verdict)
 
     async def run_provider_benchmark(self) -> float:
-        print('run_provider_benchmark')
-        return await self.provider_client.run_benchmark()
-
+        result = 0.0
+        async with self.start_provider():
+            result = await self.provider_client.run_benchmark()
+        return result
 
     async def shutdown_provider(self) -> None:
-        print('shutdown_provider')
         return await self.provider_client.shutdown()
 
 
@@ -174,7 +178,7 @@ def task_flow_helper(tmpdir):
 
 
 class SimulationBase(abc.ABC):
-
+    DEFAULT_RESOLUTION = [1000, 600]
     @abc.abstractmethod
     def _get_task_api_service(
             self,
@@ -185,10 +189,12 @@ class SimulationBase(abc.ABC):
     @staticmethod
     def _get_cube_params(
             frames: str,
-            output_format: str="png"):
+            output_format: str = "png",
+            resolution: List[int] = DEFAULT_RESOLUTION,
+    ):
         return {
             "format": output_format,
-            "resolution": [1000, 600],
+            "resolution": resolution,
             "frames": frames,
             "scene_file": "cube.blend",
             "resources": [
@@ -218,7 +224,6 @@ class SimulationBase(abc.ABC):
             task_flow_helper: TaskFlowHelper,
             expected_frames: list,
     ):
-        task_flow_helper.init_provider(self._get_task_api_service)
         async with task_flow_helper.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_task_id123'
@@ -228,7 +233,7 @@ class SimulationBase(abc.ABC):
                 self._get_cube_resources(),
                 task_params,
             )
-
+            task_flow_helper.init_provider(self._get_task_api_service, task_id)
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
             assert len(subtask_ids) <= max_subtasks_count
@@ -299,7 +304,6 @@ class SimulationBase(abc.ABC):
         max_subtasks_count = 4
         task_params = self._get_cube_params("6-7")
         expected_frames = [6, 7]
-        task_flow_helper.init_provider(self._get_task_api_service)
         async with task_flow_helper.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_discard_task_id123'
@@ -309,6 +313,7 @@ class SimulationBase(abc.ABC):
                 self._get_cube_resources(),
                 task_params,
             )
+            task_flow_helper.init_provider(self._get_task_api_service, task_id)
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
             self.check_results(
@@ -346,24 +351,45 @@ class SimulationBase(abc.ABC):
                 expected_frames,
             )
 
+
+    @pytest.mark.asyncio
+    async def test_provider_single_shutdown(self, task_flow_helper):
+        print("init_provider")
+        task_flow_helper.init_provider(self._get_task_api_service, 'task123')
+        async with task_flow_helper.start_provider():
+            print("await shutdown")
+        print("done!")
+
+    @pytest.mark.asyncio
+    async def test_provider_double_shutdown(self, task_flow_helper):
+        print("init_provider")
+        task_flow_helper.init_provider(self._get_task_api_service, 'task123')
+        async with task_flow_helper.start_provider():
+            print("shutdown 1")
+            await task_flow_helper.shutdown_provider()
+            print("shutdown 2")
+        print("done!")
+
     @pytest.mark.asyncio
     async def test_provider_shutdown_in_benchmark(self, task_flow_helper):
-        async with task_flow_helper.init_provider(self._get_task_api_service):
-            benchmark_defer = asyncio.ensure_future(task_flow_helper.run_provider_benchmark())
-            async def _shutdown_in_5s():
-                print('before sleep')
-                await asyncio.sleep(5.0)
-                print('after sleep')
-                await task_flow_helper.shutdown_provider()
-                print('after shutdown')
-                return None
-            shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
-            done, pending = await asyncio.wait(
-                [shutdown_defer, benchmark_defer],
-                return_when=asyncio.FIRST_COMPLETED)
-            print('done=', done)
-            print('pending=', pending)
-            assert benchmark_defer in done
-            assert shutdown_defer in pending
-            await shutdown_defer
-            print('DONE')
+        benchmark_defer = asyncio.ensure_future(self._simulate(
+            1,
+            self._get_cube_params("1", resolution=[10000, 6000]),
+            task_flow_helper,
+            [1],
+        ))
+        async def _shutdown_in_5s():
+            await asyncio.sleep(5.0)
+            await task_flow_helper.shutdown_provider()
+            return None
+        shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
+        done, pending = await asyncio.wait(
+            [shutdown_defer, benchmark_defer],
+            return_when=asyncio.FIRST_COMPLETED)
+        assert benchmark_defer in pending
+        assert shutdown_defer in done
+        try:
+            await benchmark_defer
+        except Exception as e:
+            print("Benchmark should fail when shutting down. Error=", e)
+        print('DONE')

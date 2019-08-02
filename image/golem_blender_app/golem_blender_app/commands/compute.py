@@ -6,7 +6,11 @@ from golem_blender_app.render_tools import blender_render
 from golem_task_api import constants
 
 
-def compute(work_dir: Path, subtask_id: str, subtask_params: dict) -> Path:
+async def compute(
+    work_dir: Path,
+    subtask_id: str,
+    subtask_params: dict
+) -> Path:
     network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
     params = subtask_params
     subtask_work_dir = work_dir / subtask_id
@@ -24,7 +28,7 @@ def compute(work_dir: Path, subtask_id: str, subtask_params: dict) -> Path:
         'borders_y': [params['borders'][1], params['borders'][3]],
     }]
     params.pop('borders')
-    blender_render.render(
+    await blender_render.render(
         params,
         {
             "WORK_DIR": str(work_dir),

@@ -3,6 +3,7 @@ from setuptools import setup
 def parse_requirements():
     """
     Parse requirements.txt file
+    Taken from https://github.com/golemfactory/golem/blob/0.20.1/setup_util/setup_commons.py#L223
     :return: [requirements, dependencies]
     """
     import re
@@ -21,7 +22,7 @@ def parse_requirements():
             requirements.append(line)
     return requirements, dependency_links
 
-requirements, dependencies = parse_requirements()
+install_requires, dependencies = parse_requirements()
 
 setup(
     name='Golem-Blender-App',
@@ -43,6 +44,6 @@ setup(
          ['golem_blender_app/verifier_tools/tree35_[crr=87.71][frr=0.92].pkl']),
     ],
     python_requires='>=3.6',
-    install_requires=requirements,
+    install_requires=install_requires,
     dependency_links=dependencies,
 )

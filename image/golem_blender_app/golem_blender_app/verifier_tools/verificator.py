@@ -94,7 +94,7 @@ def make_verdict( subtask_file_paths, crops, results, output_dir ):
     return verdict
 
 
-def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
+async def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
            mounted_paths = {"WORK_DIR": WORK_DIR, "OUTPUT_DIR": OUTPUT_DIR},
            crops_count=3, crops_borders=None):
 
@@ -119,7 +119,7 @@ def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samp
                                     resolution, samples, frames, output_format,
                                     basefilename, crops_count, crops_borders)
 
-    results = blender.render(params, mounted_paths)
+    results = await blender.render(params, mounted_paths)
 
     print(results)
 

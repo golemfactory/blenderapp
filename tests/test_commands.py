@@ -25,6 +25,7 @@ from golem_blender_app.entrypoint import (
 
 class InlineTaskApiService(TaskApiService):
     def __init__(self, work_dir: Path):
+        asyncio.get_child_watcher()
         self._work_dir = work_dir
         self._thread = None
 
@@ -38,6 +39,9 @@ class InlineTaskApiService(TaskApiService):
             requestor_handler=RequestorHandler(),
         ))
 
+    def running(self) -> bool:
+        return self._thread.is_alive()
+
     def start(self, command: str, port: int) -> Tuple[str, int]:
         self._thread = threading.Thread(
             target=self._spawn,
@@ -50,6 +54,9 @@ class InlineTaskApiService(TaskApiService):
         return host, port
 
     async def wait_until_shutdown_complete(self) -> None:
+        if not self.running():
+            print('Service no longer running')
+            return
         self._thread.join(timeout=3)
 
 
