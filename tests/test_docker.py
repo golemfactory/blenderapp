@@ -50,7 +50,13 @@ class DockerTaskApiService(TaskApiService):
         c_config = api_client.inspect_container(self._container.id)
         ip_address = \
             c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
-        wait_until_socket_open(ip_address, port)
+        try:
+            wait_until_socket_open(ip_address, port)
+        except:
+            logs = self._container.logs().decode('utf-8')
+            print('ERROR Starting container, can not reach port')
+            print(logs)
+            raise
         return ip_address, port
 
     async def wait_until_shutdown_complete(self) -> None:
