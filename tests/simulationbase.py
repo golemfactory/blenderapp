@@ -8,6 +8,7 @@ import shutil
 import pytest
 import socket
 import time
+from unittest import TestCase
 
 from golem_task_api import (
     TaskApiService,
@@ -15,6 +16,7 @@ from golem_task_api import (
     ProviderAppClient,
     RequestorAppClient,
 )
+from golem_task_api.client import ShutdownException
 
 
 def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
@@ -388,8 +390,5 @@ class SimulationBase(abc.ABC):
             return_when=asyncio.FIRST_COMPLETED)
         assert benchmark_defer in pending
         assert shutdown_defer in done
-        try:
+        with TestCase.assertRaises(self, ShutdownException):
             await benchmark_defer
-        except Exception as e:
-            print("Benchmark should fail when shutting down. Error=", e)
-        print('DONE')
