@@ -13,11 +13,10 @@ BLENDER_COMMAND = "blender"
 async def exec_cmd(cmd):
     process = await asyncio.create_subprocess_exec(*cmd)
     try:
-        result = await process.wait()
+        return await process.wait()
     except asyncio.CancelledError:
         process.terminate()
         raise
-    return result
 
 
 # pylint: disable=too-many-arguments

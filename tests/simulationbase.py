@@ -7,8 +7,7 @@ import contextlib
 import shutil
 import pytest
 import socket
-import time
-from unittest import TestCase
+import times
 
 from golem_task_api import (
     TaskApiService,
@@ -390,5 +389,5 @@ class SimulationBase(abc.ABC):
             return_when=asyncio.FIRST_COMPLETED)
         assert benchmark_defer in pending
         assert shutdown_defer in done
-        with TestCase.assertRaises(self, ShutdownException):
+        with pytest.raises(ShutdownException):
             await benchmark_defer
