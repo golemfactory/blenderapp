@@ -38,9 +38,12 @@ RUN python3 -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH
 RUN pip install --upgrade pip
 COPY golem_blender_app/requirements.txt /tmp
-# Use following lines to work with the unreleased task-api module in requirements.txt
-RUN apt-get install -y git
 RUN pip install -r /tmp/requirements.txt
+
+# Use following lines to work with the unreleased task-api module
+RUN apt-get install -y git
+RUN pip uninstall -y golem-task-api
+RUN pip install git+https://github.com/golemfactory/task-api@94f51800ee467ac34331d8e5ff85dd2456290920#subdirectory=python
 
 # Check to see that all libraries are available
 # We don't need libgfortran
