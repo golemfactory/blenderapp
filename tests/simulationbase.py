@@ -7,7 +7,7 @@ import contextlib
 import shutil
 import pytest
 import socket
-import times
+import time
 
 from golem_task_api import (
     TaskApiService,
