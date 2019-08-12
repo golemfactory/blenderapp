@@ -384,10 +384,13 @@ class SimulationBase(abc.ABC):
             await task_flow_helper.shutdown_provider()
             return None
         shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
+
         done, pending = await asyncio.wait(
             [shutdown_defer, benchmark_defer],
             return_when=asyncio.FIRST_COMPLETED)
-        assert benchmark_defer in pending
+        assert benchmark_defer in done
         assert shutdown_defer in done
-        with pytest.raises(ShutdownException):
-            await benchmark_defer
+        assert not pending
+
+        exception = benchmark_defer.exception()
+        assert type(exception) == ShutdownException

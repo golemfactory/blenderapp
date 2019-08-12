@@ -76,10 +76,11 @@ class DockerTaskApiService(TaskApiService):
 
     async def wait_until_shutdown_complete(self) -> None:
         print('Shutting down container with status: ', self._container.status)
+        if not self.running():
+            return
         logs = self._container.logs().decode('utf-8')
         print(logs)
-        if self.running():
-            self._container.remove(force=True)
+        self._container.remove(force=True)
 
 
 @pytest.mark.skipif(not is_docker_available(), reason='docker not available')
