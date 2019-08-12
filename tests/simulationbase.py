@@ -49,10 +49,8 @@ class TaskFlowHelper:
     @asynccontextmanager
     async def start_provider(self) -> None:
         self.provider_client = ProviderAppClient(self._task_api_service)
-        try:
-            yield self.provider_client
-        finally:
-            await self.provider_client.shutdown()
+        yield self.provider_client
+        # No need to finally shutdown for provider, it does this by default
 
     @asynccontextmanager
     async def init_requestor(
@@ -358,7 +356,8 @@ class SimulationBase(abc.ABC):
         print("init_provider")
         task_flow_helper.init_provider(self._get_task_api_service, 'task123')
         async with task_flow_helper.start_provider():
-            print("await shutdown")
+            print("shutdown 1")
+            await task_flow_helper.shutdown_provider()
         print("done!")
 
     @pytest.mark.asyncio
@@ -369,6 +368,7 @@ class SimulationBase(abc.ABC):
             print("shutdown 1")
             await task_flow_helper.shutdown_provider()
             print("shutdown 2")
+            await task_flow_helper.shutdown_provider()
         print("done!")
 
     @pytest.mark.asyncio
