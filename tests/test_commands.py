@@ -25,6 +25,7 @@ from golem_blender_app.entrypoint import (
 
 class InlineTaskApiService(TaskApiService):
     def __init__(self, work_dir: Path):
+        # get_child_watcher enables event loops in child threads
         asyncio.get_child_watcher()
         self._work_dir = work_dir
         self._thread = None

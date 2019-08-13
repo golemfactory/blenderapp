@@ -44,10 +44,10 @@ class TaskFlowHelper:
             task_id
     ) -> None:
         self.mkdir_provider_task(task_id)
-        self._task_api_service = get_task_api_service(self.prov_task_work_dir)
+        self._provider_service = get_task_api_service(self.prov_task_work_dir)
 
     def start_provider(self) -> None:
-        self.provider_client = ProviderAppClient(self._task_api_service)
+        self.provider_client = ProviderAppClient(self._provider_service)
         # No need to finally shutdown for provider, it does this by default
 
     @asynccontextmanager
