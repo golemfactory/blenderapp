@@ -1,5 +1,7 @@
+import asyncio
 import os
 from pathlib import Path
+from sys import platform
 from typing import Tuple
 
 import docker
@@ -33,6 +35,9 @@ class DockerTaskApiService(TaskApiService):
         self._container = None
 
     def start(self, command: str, port: int) -> Tuple[str, int]:
+        ports = {}
+        if platform == 'darwin':
+            ports = {port: port}
         self._container = docker.from_env().containers.run(
             TAG,
             command=command,
@@ -44,15 +49,35 @@ class DockerTaskApiService(TaskApiService):
             },
             detach=True,
             user=os.getuid(),
+            ports=ports
         )
         api_client = docker.APIClient()
         c_config = api_client.inspect_container(self._container.id)
-        ip_address = \
-            c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
-        wait_until_socket_open(ip_address, port)
+        if platform == 'darwin':
+            ip_address = '127.0.0.1'
+        else:
+            ip_address = \
+                c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
+        try:
+            wait_until_socket_open(ip_address, port)
+        except:
+            self.wait_until_shutdown_complete()
+            raise
         return ip_address, port
 
+
+    def running(self) -> bool:
+        try:
+            self._container.reload()
+        except docker.errors.NotFound:
+            return False
+        print('Check container status', self._container.status)
+        return self._container.status not in ['exited', 'error']
+
     async def wait_until_shutdown_complete(self) -> None:
+        print('Shutting down container with status: ', self._container.status)
+        if not self.running():
+            return
         logs = self._container.logs().decode('utf-8')
         print(logs)
         self._container.remove(force=True)
@@ -82,6 +107,10 @@ class TestDocker(SimulationBase):
 
     @pytest.mark.asyncio
     async def test_provider_benchmark(self, task_flow_helper):
-        task_flow_helper.init_provider(self._get_task_api_service)
+        print("init_provider")
+        task_id = 'test-task-id-123'
+        task_flow_helper.init_provider(self._get_task_api_service, task_id)
+        task_flow_helper.start_provider()
+        print("await benchmark")
         score = await task_flow_helper.run_provider_benchmark()
         assert score > 0

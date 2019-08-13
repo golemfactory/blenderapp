@@ -4,7 +4,7 @@ import time
 from golem_blender_app.render_tools import blender_render
 
 
-def benchmark(work_dir: Path) -> float:
+async def benchmark(work_dir: Path) -> float:
     result_dir = work_dir / 'result'
     result_dir.mkdir()
 
@@ -22,7 +22,7 @@ def benchmark(work_dir: Path) -> float:
         'samples': 0,
     }
     start_time = time.time()
-    blender_render.render(
+    await blender_render.render(
         params,
         {
             "WORK_DIR": str(work_dir),

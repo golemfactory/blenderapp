@@ -40,7 +40,7 @@ class RequestorHandler(RequestorAppHandler):
             task_work_dir: Path,
             subtask_id: str,
     ) -> Tuple[bool, Optional[str]]:
-        return verify(task_work_dir, subtask_id)
+        return await verify(task_work_dir, subtask_id)
 
     async def discard_subtasks(
             self,
@@ -56,7 +56,7 @@ class RequestorHandler(RequestorAppHandler):
         return has_pending_subtasks(task_work_dir)
 
     async def run_benchmark(self, work_dir: Path) -> float:
-        return benchmark(work_dir)
+        return await benchmark(work_dir)
 
 
 class ProviderHandler(ProviderAppHandler):
@@ -66,10 +66,10 @@ class ProviderHandler(ProviderAppHandler):
             subtask_id: str,
             subtask_params: dict,
     ) -> Path:
-        return compute(task_work_dir, subtask_id, subtask_params)
+        return await compute(task_work_dir, subtask_id, subtask_params)
 
     async def run_benchmark(self, work_dir: Path) -> float:
-        return benchmark(work_dir)
+        return await benchmark(work_dir)
 
 
 async def main(

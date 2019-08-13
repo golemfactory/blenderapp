@@ -13,7 +13,7 @@ from golem_blender_app.verifier_tools import verificator
 from golem_task_api import constants
 
 
-def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
+async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
     resources_dir = work_dir / constants.RESOURCES_DIR
     results_dir = work_dir / constants.RESULTS_DIR
     network_results_dir = work_dir / constants.NETWORK_RESULTS_DIR
@@ -36,7 +36,7 @@ def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
 
     with utils.get_db_connection(work_dir) as db:
         utils.update_subtask(db, subtask_num, utils.SubtaskStatus.VERIFYING)
-        verdict = verificator.verify(
+        verdict = await verificator.verify(
             list(map(lambda f: subtask_results_dir / f, os.listdir(subtask_results_dir))),  # noqa
             params['borders'],
             resources_dir / params['scene_file'],

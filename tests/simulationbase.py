@@ -1,3 +1,4 @@
+import asyncio
 from async_generator import asynccontextmanager
 from pathlib import Path
 from typing import Callable, List, Tuple
@@ -14,6 +15,7 @@ from golem_task_api import (
     ProviderAppClient,
     RequestorAppClient,
 )
+from golem_task_api.client import ShutdownException
 
 
 def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
@@ -39,8 +41,14 @@ class TaskFlowHelper:
     def init_provider(
             self,
             get_task_api_service: Callable[[Path], TaskApiService],
+            task_id
     ) -> None:
-        self.get_provider_task_api_service = get_task_api_service
+        self.mkdir_provider_task(task_id)
+        self._provider_service = get_task_api_service(self.prov_task_work_dir)
+
+    def start_provider(self) -> None:
+        self.provider_client = ProviderAppClient(self._provider_service)
+        # No need to finally shutdown for provider, it does this by default
 
     @asynccontextmanager
     async def init_requestor(
@@ -112,7 +120,6 @@ class TaskFlowHelper:
             task_params: dict,
     ) -> None:
         self.mkdir_requestor(task_id)
-        self.mkdir_provider_task(task_id)
 
         self.put_resources_to_requestor(resources)
 
@@ -140,8 +147,8 @@ class TaskFlowHelper:
         self.copy_resources_from_requestor(subtask.resources)
         self.mkdir_provider_subtask(subtask.subtask_id)
 
-        output_filepath = await ProviderAppClient.compute(
-            self.get_provider_task_api_service(self.prov_task_work_dir),
+        self.start_provider()
+        output_filepath = await self.provider_client.compute(
             task_id,
             subtask.subtask_id,
             subtask.params,
@@ -153,9 +160,11 @@ class TaskFlowHelper:
         return (subtask.subtask_id, verdict)
 
     async def run_provider_benchmark(self) -> float:
-        return await ProviderAppClient.run_benchmark(
-            self.get_provider_task_api_service(self.prov_work_dir),
-        )
+        self.start_provider()
+        return await self.provider_client.run_benchmark()
+
+    async def shutdown_provider(self) -> None:
+        return await self.provider_client.shutdown()
 
 
 @pytest.fixture
@@ -164,7 +173,7 @@ def task_flow_helper(tmpdir):
 
 
 class SimulationBase(abc.ABC):
-
+    DEFAULT_RESOLUTION = [1000, 600]
     @abc.abstractmethod
     def _get_task_api_service(
             self,
@@ -175,10 +184,12 @@ class SimulationBase(abc.ABC):
     @staticmethod
     def _get_cube_params(
             frames: str,
-            output_format: str="png"):
+            output_format: str = "png",
+            resolution: List[int] = DEFAULT_RESOLUTION,
+    ):
         return {
             "format": output_format,
-            "resolution": [1000, 600],
+            "resolution": resolution,
             "frames": frames,
             "scene_file": "cube.blend",
             "resources": [
@@ -208,7 +219,6 @@ class SimulationBase(abc.ABC):
             task_flow_helper: TaskFlowHelper,
             expected_frames: list,
     ):
-        task_flow_helper.init_provider(self._get_task_api_service)
         async with task_flow_helper.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_task_id123'
@@ -218,7 +228,7 @@ class SimulationBase(abc.ABC):
                 self._get_cube_resources(),
                 task_params,
             )
-
+            task_flow_helper.init_provider(self._get_task_api_service, task_id)
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
             assert len(subtask_ids) <= max_subtasks_count
@@ -289,7 +299,6 @@ class SimulationBase(abc.ABC):
         max_subtasks_count = 4
         task_params = self._get_cube_params("6-7")
         expected_frames = [6, 7]
-        task_flow_helper.init_provider(self._get_task_api_service)
         async with task_flow_helper.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_discard_task_id123'
@@ -299,6 +308,7 @@ class SimulationBase(abc.ABC):
                 self._get_cube_resources(),
                 task_params,
             )
+            task_flow_helper.init_provider(self._get_task_api_service, task_id)
             subtask_ids = \
                 await task_flow_helper.compute_remaining_subtasks(task_id)
             self.check_results(
@@ -335,3 +345,48 @@ class SimulationBase(abc.ABC):
                 task_params["format"],
                 expected_frames,
             )
+
+
+    @pytest.mark.asyncio
+    async def test_provider_single_shutdown(self, task_flow_helper):
+        print("init_provider")
+        task_flow_helper.init_provider(self._get_task_api_service, 'task123')
+        print("start_provider")
+        task_flow_helper.start_provider()
+        print("shutdown 1")
+        await task_flow_helper.shutdown_provider()
+        print("done!")
+
+    @pytest.mark.asyncio
+    async def test_provider_double_shutdown(self, task_flow_helper):
+        print("init_provider")
+        task_flow_helper.init_provider(self._get_task_api_service, 'task123')
+        print("start_provider")
+        task_flow_helper.start_provider()
+        print("shutdown 1")
+        await task_flow_helper.shutdown_provider()
+        print("shutdown 2")
+        await task_flow_helper.shutdown_provider()
+        print("done!")
+
+    @pytest.mark.asyncio
+    async def test_provider_shutdown_in_benchmark(self, task_flow_helper):
+        benchmark_defer = asyncio.ensure_future(self._simulate(
+            1,
+            self._get_cube_params("1", resolution=[10000, 6000]),
+            task_flow_helper,
+            [1],
+        ))
+        async def _shutdown_in_5s():
+            await asyncio.sleep(5.0)
+            await task_flow_helper.shutdown_provider()
+            return None
+        shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
+
+        done, _ = await asyncio.wait(
+            [shutdown_defer, benchmark_defer],
+            return_when=asyncio.FIRST_COMPLETED)
+        assert shutdown_defer in done
+
+        with pytest.raises(ShutdownException):
+            await benchmark_defer
