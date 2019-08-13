@@ -46,10 +46,8 @@ class TaskFlowHelper:
         self.mkdir_provider_task(task_id)
         self._task_api_service = get_task_api_service(self.prov_task_work_dir)
 
-    @asynccontextmanager
-    async def start_provider(self) -> None:
+    def start_provider(self) -> None:
         self.provider_client = ProviderAppClient(self._task_api_service)
-        yield self.provider_client
         # No need to finally shutdown for provider, it does this by default
 
     @asynccontextmanager
@@ -149,12 +147,12 @@ class TaskFlowHelper:
         self.copy_resources_from_requestor(subtask.resources)
         self.mkdir_provider_subtask(subtask.subtask_id)
 
-        async with self.start_provider():
-            output_filepath = await self.provider_client.compute(
-                task_id,
-                subtask.subtask_id,
-                subtask.params,
-            )
+        self.start_provider()
+        output_filepath = await self.provider_client.compute(
+            task_id,
+            subtask.subtask_id,
+            subtask.params,
+        )
         self.copy_result_from_provider(output_filepath, subtask.subtask_id)
 
         verdict = \
@@ -162,10 +160,8 @@ class TaskFlowHelper:
         return (subtask.subtask_id, verdict)
 
     async def run_provider_benchmark(self) -> float:
-        result = 0.0
-        async with self.start_provider():
-            result = await self.provider_client.run_benchmark()
-        return result
+        self.start_provider()
+        return await self.provider_client.run_benchmark()
 
     async def shutdown_provider(self) -> None:
         return await self.provider_client.shutdown()
