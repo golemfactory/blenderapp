@@ -110,7 +110,7 @@ class TestDocker(SimulationBase):
         print("init_provider")
         task_id = 'test-task-id-123'
         task_flow_helper.init_provider(self._get_task_api_service, task_id)
-        async with task_flow_helper.start_provider():
-            print("await benchmark")
-            score = await task_flow_helper.run_provider_benchmark()
-            assert score > 0
+        task_flow_helper.start_provider()
+        print("await benchmark")
+        score = await task_flow_helper.run_provider_benchmark()
+        assert score > 0

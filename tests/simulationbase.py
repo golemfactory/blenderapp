@@ -351,20 +351,22 @@ class SimulationBase(abc.ABC):
     async def test_provider_single_shutdown(self, task_flow_helper):
         print("init_provider")
         task_flow_helper.init_provider(self._get_task_api_service, 'task123')
-        async with task_flow_helper.start_provider():
-            print("shutdown 1")
-            await task_flow_helper.shutdown_provider()
+        print("start_provider")
+        task_flow_helper.start_provider()
+        print("shutdown 1")
+        await task_flow_helper.shutdown_provider()
         print("done!")
 
     @pytest.mark.asyncio
     async def test_provider_double_shutdown(self, task_flow_helper):
         print("init_provider")
         task_flow_helper.init_provider(self._get_task_api_service, 'task123')
-        async with task_flow_helper.start_provider():
-            print("shutdown 1")
-            await task_flow_helper.shutdown_provider()
-            print("shutdown 2")
-            await task_flow_helper.shutdown_provider()
+        print("start_provider")
+        task_flow_helper.start_provider()
+        print("shutdown 1")
+        await task_flow_helper.shutdown_provider()
+        print("shutdown 2")
+        await task_flow_helper.shutdown_provider()
         print("done!")
 
     @pytest.mark.asyncio
@@ -381,7 +383,7 @@ class SimulationBase(abc.ABC):
             return None
         shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
 
-        done, pending = await asyncio.wait(
+        done, _ = await asyncio.wait(
             [shutdown_defer, benchmark_defer],
             return_when=asyncio.FIRST_COMPLETED)
         assert shutdown_defer in done
