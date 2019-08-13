@@ -388,9 +388,7 @@ class SimulationBase(abc.ABC):
         done, pending = await asyncio.wait(
             [shutdown_defer, benchmark_defer],
             return_when=asyncio.FIRST_COMPLETED)
-        assert benchmark_defer in done
         assert shutdown_defer in done
-        assert not pending
 
-        exception = benchmark_defer.exception()
-        assert type(exception) == ShutdownException
+        with pytest.raises(ShutdownException):
+            await benchmark_defer
