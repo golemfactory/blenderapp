@@ -13,7 +13,7 @@ from golem_task_api import (
 
 from .simulationbase import (
     SimulationBase,
-    task_flow_helper,
+    task_lifecycle_util,
     wait_until_socket_open,
 )
 
@@ -98,17 +98,18 @@ class TestDocker(SimulationBase):
         return DockerTaskApiService(work_dir)
 
     @pytest.mark.asyncio
-    async def test_requestor_benchmark(self, task_flow_helper):
-        async with task_flow_helper.init_requestor(self._get_task_api_service):
-            score = await task_flow_helper.requestor_client.run_benchmark()
+    async def test_requestor_benchmark(self, task_lifecycle_util):
+        async with task_lifecycle_util.init_requestor(
+                self._get_task_api_service):
+            score = await task_lifecycle_util.requestor_client.run_benchmark()
             assert score > 0
 
     @pytest.mark.asyncio
-    async def test_provider_benchmark(self, task_flow_helper):
+    async def test_provider_benchmark(self, task_lifecycle_util):
         print("init_provider")
         task_id = 'test-task-id-123'
-        task_flow_helper.init_provider(self._get_task_api_service, task_id)
-        task_flow_helper.start_provider()
+        task_lifecycle_util.init_provider(self._get_task_api_service, task_id)
+        await task_lifecycle_util.start_provider()
         print("await benchmark")
-        score = await task_flow_helper.run_provider_benchmark()
+        score = await task_lifecycle_util.run_provider_benchmark()
         assert score > 0

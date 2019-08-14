@@ -5,6 +5,7 @@ FROM base as blender
 ENV BLENDER_MAJOR 2.79
 ENV BLENDER_VERSION 2.79
 ENV GLIBC_VERSION 219
+# The mirror is recently faster than the official site.
 # ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
 ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
 
@@ -43,7 +44,8 @@ RUN pip install -r /tmp/requirements.txt
 # Use following lines to work with the unreleased task-api module
 # RUN apt-get install -y git
 # RUN pip uninstall -y golem-task-api
-# RUN pip install git+https://github.com/golemfactory/task-api@789d221e77371ec93694099fd5ab3a243594c6ce#subdirectory=python
+# ENV GITCOMMIT=bfc2872c44d89132e43667d826b53e666c6453dc
+# RUN pip install git+https://github.com/golemfactory/task-api@$GITCOMMIT#subdirectory=python
 
 # Check to see that all libraries are available
 # We don't need libgfortran
