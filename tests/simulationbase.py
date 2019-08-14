@@ -46,8 +46,9 @@ class TaskFlowHelper:
         self.mkdir_provider_task(task_id)
         self._provider_service = get_task_api_service(self.prov_task_work_dir)
 
-    def start_provider(self) -> None:
-        self.provider_client = ProviderAppClient(self._provider_service)
+    async def start_provider(self) -> None:
+        self.provider_client = \
+            await ProviderAppClient.create(self._provider_service)
         # No need to finally shutdown for provider, it does this by default
 
     @asynccontextmanager
@@ -57,7 +58,8 @@ class TaskFlowHelper:
             port: int = 50005,
     ):
         task_api_service = get_task_api_service(self.req_work_dir)
-        self.requestor_client = RequestorAppClient(task_api_service, port)
+        self.requestor_client = \
+            await RequestorAppClient.create(task_api_service, port)
         try:
             yield self.requestor_client
         finally:
@@ -147,7 +149,7 @@ class TaskFlowHelper:
         self.copy_resources_from_requestor(subtask.resources)
         self.mkdir_provider_subtask(subtask.subtask_id)
 
-        self.start_provider()
+        await self.start_provider()
         output_filepath = await self.provider_client.compute(
             task_id,
             subtask.subtask_id,
@@ -160,7 +162,7 @@ class TaskFlowHelper:
         return (subtask.subtask_id, verdict)
 
     async def run_provider_benchmark(self) -> float:
-        self.start_provider()
+        await self.start_provider()
         return await self.provider_client.run_benchmark()
 
     async def shutdown_provider(self) -> None:
@@ -174,6 +176,7 @@ def task_flow_helper(tmpdir):
 
 class SimulationBase(abc.ABC):
     DEFAULT_RESOLUTION = [1000, 600]
+
     @abc.abstractmethod
     def _get_task_api_service(
             self,
@@ -346,13 +349,12 @@ class SimulationBase(abc.ABC):
                 expected_frames,
             )
 
-
     @pytest.mark.asyncio
     async def test_provider_single_shutdown(self, task_flow_helper):
         print("init_provider")
         task_flow_helper.init_provider(self._get_task_api_service, 'task123')
         print("start_provider")
-        task_flow_helper.start_provider()
+        await task_flow_helper.start_provider()
         print("shutdown 1")
         await task_flow_helper.shutdown_provider()
         print("done!")
@@ -362,7 +364,7 @@ class SimulationBase(abc.ABC):
         print("init_provider")
         task_flow_helper.init_provider(self._get_task_api_service, 'task123')
         print("start_provider")
-        task_flow_helper.start_provider()
+        await task_flow_helper.start_provider()
         print("shutdown 1")
         await task_flow_helper.shutdown_provider()
         print("shutdown 2")
@@ -377,6 +379,7 @@ class SimulationBase(abc.ABC):
             task_flow_helper,
             [1],
         ))
+
         async def _shutdown_in_5s():
             await asyncio.sleep(5.0)
             await task_flow_helper.shutdown_provider()
