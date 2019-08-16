@@ -1,4 +1,3 @@
-import asyncio
 import os
 from pathlib import Path
 from sys import platform
@@ -34,7 +33,7 @@ class DockerTaskApiService(TaskApiService):
         self._work_dir = work_dir
         self._container = None
 
-    def start(self, command: str, port: int) -> Tuple[str, int]:
+    async def start(self, command: str, port: int) -> Tuple[str, int]:
         ports = {}
         if platform == 'darwin':
             ports = {port: port}
@@ -64,7 +63,6 @@ class DockerTaskApiService(TaskApiService):
             self.wait_until_shutdown_complete()
             raise
         return ip_address, port
-
 
     def running(self) -> bool:
         try:
@@ -97,7 +95,7 @@ class TestDocker(SimulationBase):
             self,
             work_dir: Path,
     ) -> TaskApiService:
-         return DockerTaskApiService(work_dir)
+        return DockerTaskApiService(work_dir)
 
     @pytest.mark.asyncio
     async def test_requestor_benchmark(self, task_flow_helper):

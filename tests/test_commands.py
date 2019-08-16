@@ -43,7 +43,7 @@ class InlineTaskApiService(TaskApiService):
     def running(self) -> bool:
         return self._thread.is_alive()
 
-    def start(self, command: str, port: int) -> Tuple[str, int]:
+    async def start(self, command: str, port: int) -> Tuple[str, int]:
         self._thread = threading.Thread(
             target=self._spawn,
             args=(command,),
