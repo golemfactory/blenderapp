@@ -11,7 +11,7 @@ jobs:
             BLENDER_VERSION: 2.79
             GLIBC_VERSION: 219
            command: |
-             curl -Ls http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2 | sudo tar -xjv -C /opt/
+             curl -Ls http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2 | sudo tar -xjv -C /opt/
              sudo ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64/blender /usr/local/bin/blender
        - run:
            name: Install Python3.6
