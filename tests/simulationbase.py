@@ -1,21 +1,15 @@
-import asyncio
-from async_generator import asynccontextmanager
 from pathlib import Path
-from typing import Callable, List, Tuple
+from typing import List
 import abc
+import asyncio
 import contextlib
-import shutil
 import pytest
 import socket
 import time
 
-from golem_task_api import (
-    TaskApiService,
-    constants,
-    ProviderAppClient,
-    RequestorAppClient,
-)
+from golem_task_api import TaskApiService
 from golem_task_api.client import ShutdownException
+from golem_task_api.testutils import TaskLifecycleUtil
 
 
 def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
@@ -29,149 +23,10 @@ def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
     raise Exception(f'Could not connect to socket ({host}, {port})')
 
 
-class TaskFlowHelper:
-    def __init__(self, work_dir: Path) -> None:
-        print('workdir:', work_dir)
-        self.work_dir = work_dir
-        self.req_work_dir = work_dir / 'requestor'
-        self.req_work_dir.mkdir()
-        self.prov_work_dir = work_dir / 'provider'
-        self.prov_work_dir.mkdir()
-
-    def init_provider(
-            self,
-            get_task_api_service: Callable[[Path], TaskApiService],
-            task_id
-    ) -> None:
-        self.mkdir_provider_task(task_id)
-        self._provider_service = get_task_api_service(self.prov_task_work_dir)
-
-    async def start_provider(self) -> None:
-        self.provider_client = \
-            await ProviderAppClient.create(self._provider_service)
-        # No need to finally shutdown for provider, it does this by default
-
-    @asynccontextmanager
-    async def init_requestor(
-            self,
-            get_task_api_service: Callable[[Path], TaskApiService],
-            port: int = 50005,
-    ):
-        task_api_service = get_task_api_service(self.req_work_dir)
-        self.requestor_client = \
-            await RequestorAppClient.create(task_api_service, port)
-        try:
-            yield self.requestor_client
-        finally:
-            await self.requestor_client.shutdown()
-
-    def mkdir_requestor(self, task_id: str) -> None:
-        self.req_task_work_dir = self.req_work_dir / task_id
-        self.req_task_work_dir.mkdir()
-        self.req_task_resources_dir = \
-            self.req_task_work_dir / constants.RESOURCES_DIR
-        self.req_task_resources_dir.mkdir()
-        self.req_task_net_resources_dir = \
-            self.req_task_work_dir / constants.NETWORK_RESOURCES_DIR
-        self.req_task_net_resources_dir.mkdir()
-        self.req_task_results_dir = \
-            self.req_task_work_dir / constants.RESULTS_DIR
-        self.req_task_results_dir.mkdir()
-        self.req_task_net_results_dir = \
-            self.req_task_work_dir / constants.NETWORK_RESULTS_DIR
-        self.req_task_net_results_dir.mkdir()
-
-    def mkdir_provider_task(self, task_id: str) -> None:
-        self.prov_task_work_dir = self.prov_work_dir / task_id
-        self.prov_task_work_dir.mkdir()
-        self.prov_task_net_resources_dir = \
-            self.prov_task_work_dir / constants.NETWORK_RESOURCES_DIR
-        self.prov_task_net_resources_dir.mkdir()
-
-    def mkdir_provider_subtask(self, subtask_id: str) -> None:
-        prov_subtask_work_dir = self.prov_task_work_dir / subtask_id
-        prov_subtask_work_dir.mkdir()
-
-    def put_resources_to_requestor(self, resources: List[Path]) -> None:
-        for resource in resources:
-            shutil.copy2(resource, self.req_task_resources_dir)
-
-    def copy_resources_from_requestor(self, resources: List[str]) -> None:
-        for resource_id in resources:
-            network_resource = self.req_task_net_resources_dir / resource_id
-            assert network_resource.exists()
-            shutil.copy2(network_resource, self.prov_task_net_resources_dir)
-
-    def copy_result_from_provider(
-            self,
-            output_filepath: Path,
-            subtask_id: str,
-    ) -> None:
-        result = self.prov_task_work_dir / output_filepath
-        assert result.exists()
-        shutil.copy2(
-            result,
-            self.req_task_net_results_dir / f'{result.name}',
-        )
-
-    async def create_task(
-            self,
-            task_id: str,
-            max_subtasks_count: int,
-            resources: List[Path],
-            task_params: dict,
-    ) -> None:
-        self.mkdir_requestor(task_id)
-
-        self.put_resources_to_requestor(resources)
-
-        await self.requestor_client.create_task(
-            task_id,
-            max_subtasks_count,
-            task_params,
-        )
-
-    async def compute_remaining_subtasks(self, task_id: str) -> List[str]:
-        """ Returns list of subtask IDs """
-        subtask_ids = []
-        while await self.requestor_client.has_pending_subtasks(task_id):
-            subtask_id, verdict = await self.compute_next_subtask(task_id)
-            assert verdict
-            subtask_ids.append(subtask_id)
-        return subtask_ids
-
-    async def compute_next_subtask(self, task_id: str) -> Tuple[str, bool]:
-        """ Returns (subtask_id, verification result) """
-        assert await self.requestor_client.has_pending_subtasks(task_id)
-        subtask = await self.requestor_client.next_subtask(task_id)
-        assert subtask.resources == ['0.zip']
-
-        self.copy_resources_from_requestor(subtask.resources)
-        self.mkdir_provider_subtask(subtask.subtask_id)
-
-        await self.start_provider()
-        output_filepath = await self.provider_client.compute(
-            task_id,
-            subtask.subtask_id,
-            subtask.params,
-        )
-        self.copy_result_from_provider(output_filepath, subtask.subtask_id)
-
-        verdict = \
-            await self.requestor_client.verify(task_id, subtask.subtask_id)
-        return (subtask.subtask_id, verdict)
-
-    async def run_provider_benchmark(self) -> float:
-        await self.start_provider()
-        return await self.provider_client.run_benchmark()
-
-    async def shutdown_provider(self) -> None:
-        return await self.provider_client.shutdown()
-
-
 @pytest.fixture
-def task_flow_helper(tmpdir):
-    return TaskFlowHelper(Path(tmpdir))
+def task_lifecycle_util(tmpdir):
+    print('workdir:', tmpdir)
+    return TaskLifecycleUtil(Path(tmpdir))
 
 
 class SimulationBase(abc.ABC):
@@ -205,7 +60,7 @@ class SimulationBase(abc.ABC):
         return [Path(__file__).parent / 'resources' / 'cube.blend']
 
     @staticmethod
-    def check_results(
+    def _check_results(
             req_task_results_dir: Path,
             output_format: str,
             expected_frames: List[int],
@@ -215,107 +70,101 @@ class SimulationBase(abc.ABC):
             result_file = req_task_results_dir / filename
             assert result_file.exists()
 
-    async def _simulate(
-            self,
-            max_subtasks_count: int,
-            task_params: dict,
-            task_flow_helper: TaskFlowHelper,
-            expected_frames: list,
+    async def _simulate_cube_task(
+        self,
+        max_subtasks_count: int,
+        task_params: dict,
+        task_lifecycle_util: TaskLifecycleUtil,
+        expected_frames: List[int],
     ):
-        async with task_flow_helper.init_requestor(
-                self._get_task_api_service) as requestor_client:
-            task_id = 'test_task_id123'
-            await task_flow_helper.create_task(
-                task_id,
-                max_subtasks_count,
-                self._get_cube_resources(),
-                task_params,
-            )
-            task_flow_helper.init_provider(self._get_task_api_service, task_id)
-            subtask_ids = \
-                await task_flow_helper.compute_remaining_subtasks(task_id)
-            assert len(subtask_ids) <= max_subtasks_count
-
-            assert not await requestor_client.has_pending_subtasks(task_id)
-            self.check_results(
-                task_flow_helper.req_task_results_dir,
-                task_params["format"],
-                expected_frames,
-            )
+        await task_lifecycle_util.simulate_task(
+            self._get_task_api_service,
+            max_subtasks_count,
+            task_params,
+            self._get_cube_resources(),
+        )
+        self._check_results(
+            task_lifecycle_util.req_task_results_dir,
+            task_params["format"],
+            expected_frames,
+        )
 
     @pytest.mark.asyncio
-    async def test_one_subtasks_one_frame(self, task_flow_helper):
-        await self._simulate(
+    async def test_one_subtasks_one_frame(self, task_lifecycle_util):
+        await self._simulate_cube_task(
             1,
             self._get_cube_params("1"),
-            task_flow_helper,
+            task_lifecycle_util,
             [1],
         )
 
     @pytest.mark.asyncio
-    async def test_one_subtasks_three_frames(self, task_flow_helper):
-        await self._simulate(
+    async def test_one_subtasks_three_frames(self, task_lifecycle_util):
+        await self._simulate_cube_task(
             1,
             self._get_cube_params("2-3;8"),
-            task_flow_helper,
+            task_lifecycle_util,
             [2, 3, 8],
         )
 
     @pytest.mark.asyncio
-    async def test_two_subtasks_one_frame_png(self, task_flow_helper):
-        await self._simulate(
+    async def test_two_subtasks_one_frame_png(self, task_lifecycle_util):
+        await self._simulate_cube_task(
             2,
             self._get_cube_params("5"),
-            task_flow_helper,
+            task_lifecycle_util,
             [5],
         )
 
     @pytest.mark.asyncio
-    async def test_two_subtasks_one_frame_exr(self, task_flow_helper):
-        await self._simulate(
+    async def test_two_subtasks_one_frame_exr(self, task_lifecycle_util):
+        await self._simulate_cube_task(
             2,
             self._get_cube_params("5", "exr"),
-            task_flow_helper,
+            task_lifecycle_util,
             [5],
         )
 
     @pytest.mark.asyncio
-    async def test_two_subtasks_two_frames(self, task_flow_helper):
-        await self._simulate(
+    async def test_two_subtasks_two_frames(self, task_lifecycle_util):
+        await self._simulate_cube_task(
             2,
             self._get_cube_params("5;9"),
-            task_flow_helper,
+            task_lifecycle_util,
             [5, 9],
         )
 
     @pytest.mark.asyncio
-    async def test_four_subtasks_two_frames(self, task_flow_helper):
-        await self._simulate(
+    async def test_four_subtasks_two_frames(self, task_lifecycle_util):
+        await self._simulate_cube_task(
             4,
             self._get_cube_params("6-7"),
-            task_flow_helper,
+            task_lifecycle_util,
             [6, 7],
         )
 
     @pytest.mark.asyncio
-    async def test_discard(self, task_flow_helper):
+    async def test_discard(self, task_lifecycle_util):
         max_subtasks_count = 4
         task_params = self._get_cube_params("6-7")
         expected_frames = [6, 7]
-        async with task_flow_helper.init_requestor(
+        async with task_lifecycle_util.init_requestor(
                 self._get_task_api_service) as requestor_client:
             task_id = 'test_discard_task_id123'
-            await task_flow_helper.create_task(
+            await task_lifecycle_util.create_task(
                 task_id,
                 max_subtasks_count,
                 self._get_cube_resources(),
                 task_params,
             )
-            task_flow_helper.init_provider(self._get_task_api_service, task_id)
+            task_lifecycle_util.init_provider(
+                self._get_task_api_service,
+                task_id,
+            )
             subtask_ids = \
-                await task_flow_helper.compute_remaining_subtasks(task_id)
-            self.check_results(
-                task_flow_helper.req_task_results_dir,
+                await task_lifecycle_util.compute_remaining_subtasks(task_id)
+            self._check_results(
+                task_lifecycle_util.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -326,9 +175,9 @@ class SimulationBase(abc.ABC):
             assert discarded_subtask_ids == subtask_ids
             assert await requestor_client.has_pending_subtasks(task_id)
             subtask_ids = \
-                await task_flow_helper.compute_remaining_subtasks(task_id)
-            self.check_results(
-                task_flow_helper.req_task_results_dir,
+                await task_lifecycle_util.compute_remaining_subtasks(task_id)
+            self._check_results(
+                task_lifecycle_util.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -341,48 +190,48 @@ class SimulationBase(abc.ABC):
             assert discarded_subtask_ids == subtask_ids[:1]
             assert await requestor_client.has_pending_subtasks(task_id)
             subtask_ids = \
-                await task_flow_helper.compute_remaining_subtasks(task_id)
+                await task_lifecycle_util.compute_remaining_subtasks(task_id)
             assert len(subtask_ids) == 1
-            self.check_results(
-                task_flow_helper.req_task_results_dir,
+            self._check_results(
+                task_lifecycle_util.req_task_results_dir,
                 task_params["format"],
                 expected_frames,
             )
 
     @pytest.mark.asyncio
-    async def test_provider_single_shutdown(self, task_flow_helper):
+    async def test_provider_single_shutdown(self, task_lifecycle_util):
         print("init_provider")
-        task_flow_helper.init_provider(self._get_task_api_service, 'task123')
+        task_lifecycle_util.init_provider(self._get_task_api_service, 'task123')
         print("start_provider")
-        await task_flow_helper.start_provider()
+        await task_lifecycle_util.start_provider()
         print("shutdown 1")
-        await task_flow_helper.shutdown_provider()
+        await task_lifecycle_util.shutdown_provider()
         print("done!")
 
     @pytest.mark.asyncio
-    async def test_provider_double_shutdown(self, task_flow_helper):
+    async def test_provider_double_shutdown(self, task_lifecycle_util):
         print("init_provider")
-        task_flow_helper.init_provider(self._get_task_api_service, 'task123')
+        task_lifecycle_util.init_provider(self._get_task_api_service, 'task123')
         print("start_provider")
-        await task_flow_helper.start_provider()
+        await task_lifecycle_util.start_provider()
         print("shutdown 1")
-        await task_flow_helper.shutdown_provider()
+        await task_lifecycle_util.shutdown_provider()
         print("shutdown 2")
-        await task_flow_helper.shutdown_provider()
+        await task_lifecycle_util.shutdown_provider()
         print("done!")
 
     @pytest.mark.asyncio
-    async def test_provider_shutdown_in_benchmark(self, task_flow_helper):
-        benchmark_defer = asyncio.ensure_future(self._simulate(
+    async def test_provider_shutdown_in_benchmark(self, task_lifecycle_util):
+        benchmark_defer = asyncio.ensure_future(self._simulate_cube_task(
             1,
             self._get_cube_params("1", resolution=[10000, 6000]),
-            task_flow_helper,
+            task_lifecycle_util,
             [1],
         ))
 
         async def _shutdown_in_5s():
             await asyncio.sleep(5.0)
-            await task_flow_helper.shutdown_provider()
+            await task_lifecycle_util.shutdown_provider()
             return None
         shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
 
