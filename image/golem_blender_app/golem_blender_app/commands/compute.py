@@ -31,7 +31,7 @@ async def compute(
     await blender_render.render(
         params,
         {
-            "WORK_DIR": str(work_dir),
+            "WORK_DIR": str(subtask_work_dir),
             "OUTPUT_DIR": str(result_dir),
         },
     )
