@@ -8,8 +8,8 @@ from golem_task_api import constants
 
 
 def create_task(work_dir: Path, max_subtasks_count: int, params: dict) -> None:
-    resources_dir = work_dir / constants.RESOURCES_DIR
-    network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
+    task_inputs_dir = work_dir / constants.TASK_INPUTS_DIR
+    subtask_inputs_dir = work_dir / constants.SUBTASK_INPUTS_DIR
 
     frame_count = len(utils.string_to_frames(params['frames']))
     if max_subtasks_count <= frame_count:
@@ -20,9 +20,9 @@ def create_task(work_dir: Path, max_subtasks_count: int, params: dict) -> None:
     with open(work_dir / 'task_params.json', 'w') as f:
         json.dump(params, f)
 
-    with zipfile.ZipFile(network_resources_dir / '0.zip', 'w') as zipf:
+    with zipfile.ZipFile(subtask_inputs_dir / '0.zip', 'w') as zipf:
         for resource in params['resources']:
-            resource_path = resources_dir / resource
+            resource_path = task_inputs_dir / resource
             zipf.write(resource_path, resource)
 
     with utils.get_db_connection(work_dir) as db:

@@ -12,17 +12,6 @@ from golem_task_api.client import ShutdownException
 from golem_task_api.testutils import TaskLifecycleUtil
 
 
-def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with contextlib.closing(
-                socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            if sock.connect_ex((host, port)) == 0:
-                return
-        time.sleep(0.05)
-    raise Exception(f'Could not connect to socket ({host}, {port})')
-
-
 @pytest.fixture
 def task_lifecycle_util(tmpdir):
     print('workdir:', tmpdir)
@@ -61,13 +50,13 @@ class SimulationBase(abc.ABC):
 
     @staticmethod
     def _check_results(
-            req_task_results_dir: Path,
+            req_task_outputs_dir: Path,
             output_format: str,
             expected_frames: List[int],
     ) -> None:
         for frame in expected_frames:
             filename = f'result{frame:04d}.{output_format}'
-            result_file = req_task_results_dir / filename
+            result_file = req_task_outputs_dir / filename
             assert result_file.exists()
 
     async def _simulate_cube_task(
@@ -84,7 +73,7 @@ class SimulationBase(abc.ABC):
             self._get_cube_resources(),
         )
         self._check_results(
-            task_lifecycle_util.req_task_results_dir,
+            task_lifecycle_util.req_task_outputs_dir,
             task_params["format"],
             expected_frames,
         )
@@ -164,7 +153,7 @@ class SimulationBase(abc.ABC):
             subtask_ids = \
                 await task_lifecycle_util.compute_remaining_subtasks(task_id)
             self._check_results(
-                task_lifecycle_util.req_task_results_dir,
+                task_lifecycle_util.req_task_outputs_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -177,7 +166,7 @@ class SimulationBase(abc.ABC):
             subtask_ids = \
                 await task_lifecycle_util.compute_remaining_subtasks(task_id)
             self._check_results(
-                task_lifecycle_util.req_task_results_dir,
+                task_lifecycle_util.req_task_outputs_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -193,7 +182,7 @@ class SimulationBase(abc.ABC):
                 await task_lifecycle_util.compute_remaining_subtasks(task_id)
             assert len(subtask_ids) == 1
             self._check_results(
-                task_lifecycle_util.req_task_results_dir,
+                task_lifecycle_util.req_task_outputs_dir,
                 task_params["format"],
                 expected_frames,
             )

@@ -14,7 +14,6 @@ from golem_task_api import (
 from .simulationbase import (
     SimulationBase,
     task_lifecycle_util,
-    wait_until_socket_open,
 )
 
 TAG = 'blenderapp_test'
@@ -57,11 +56,6 @@ class DockerTaskApiService(TaskApiService):
         else:
             ip_address = \
                 c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
-        try:
-            wait_until_socket_open(ip_address, port)
-        except:
-            self.wait_until_shutdown_complete()
-            raise
         return ip_address, port
 
     def running(self) -> bool:

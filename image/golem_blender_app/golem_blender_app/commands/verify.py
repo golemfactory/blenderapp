@@ -14,9 +14,9 @@ from golem_task_api import constants
 
 
 async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
-    resources_dir = work_dir / constants.RESOURCES_DIR
-    results_dir = work_dir / constants.RESULTS_DIR
-    network_results_dir = work_dir / constants.NETWORK_RESULTS_DIR
+    task_inputs_dir = work_dir / constants.TASK_INPUTS_DIR
+    results_dir = work_dir / constants.TASK_OUTPUTS_DIR
+    subtask_outputs_dir = work_dir / constants.SUBTASK_OUTPUTS_DIR
 
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
@@ -29,7 +29,7 @@ async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
     subtask_output_dir = subtask_work_dir / 'output'
     subtask_output_dir.mkdir()
 
-    with zipfile.ZipFile(network_results_dir / f'{subtask_id}.zip', 'r') as f:
+    with zipfile.ZipFile(subtask_outputs_dir / f'{subtask_id}.zip', 'r') as f:
         f.extractall(subtask_results_dir)
 
     subtask_num = utils.get_subtask_num_from_id(subtask_id)
@@ -39,7 +39,7 @@ async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
         verdict = await verificator.verify(
             list(map(lambda f: subtask_results_dir / f, os.listdir(subtask_results_dir))),  # noqa
             params['borders'],
-            resources_dir / params['scene_file'],
+            task_inputs_dir / params['scene_file'],
             params['resolution'],
             params['samples'],
             params['frames'],
