@@ -11,14 +11,14 @@ async def compute(
     subtask_id: str,
     subtask_params: dict
 ) -> Path:
-    network_resources_dir = work_dir / constants.NETWORK_RESOURCES_DIR
+    subtask_inputs_dir = work_dir / constants.SUBTASK_INPUTS_DIR
     params = subtask_params
     subtask_work_dir = work_dir / subtask_id
-    resources_dir = work_dir / constants.RESOURCES_DIR
+    resources_dir = work_dir / 'extracted_subtask_inputs'
     result_dir = subtask_work_dir / 'result'
     result_dir.mkdir()
     for rid in params['resources']:
-        with zipfile.ZipFile(network_resources_dir / rid, 'r') as zipf:
+        with zipfile.ZipFile(subtask_inputs_dir / rid, 'r') as zipf:
             zipf.extractall(resources_dir)
 
     params['scene_file'] = resources_dir / params['scene_file']
