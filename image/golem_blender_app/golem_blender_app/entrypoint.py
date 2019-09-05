@@ -78,13 +78,17 @@ async def main(
         requestor_handler: Optional[RequestorHandler] = None,
         provider_handler: Optional[ProviderHandler] = None,
 ):
-    await entrypoint(work_dir, argv, requestor_handler, provider_handler)
+    await entrypoint(
+        work_dir,
+        argv,
+        requestor_handler=requestor_handler,
+        provider_handler=provider_handler)
 
 
 if __name__ == '__main__':
     asyncio.get_event_loop().run_until_complete(main(
         Path(f'/{api_constants.WORK_DIR}'),
         sys.argv[1:],
-        RequestorHandler(),
-        ProviderHandler(),
+        requestor_handler=RequestorHandler(),
+        provider_handler=ProviderHandler(),
     ))
