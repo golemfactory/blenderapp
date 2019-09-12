@@ -58,6 +58,9 @@ class DockerTaskApiService(TaskApiService):
                 c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
         return ip_address, port
 
+    async def stop(self) -> None:
+        pass
+
     def running(self) -> bool:
         try:
             self._container.reload()
@@ -105,5 +108,5 @@ class TestDocker(SimulationBase):
         task_lifecycle_util.init_provider(self._get_task_api_service, task_id)
         await task_lifecycle_util.start_provider()
         print("await benchmark")
-        score = await task_lifecycle_util.run_provider_benchmark()
+        score = await task_lifecycle_util.provider_client.run_benchmark()
         assert score > 0
