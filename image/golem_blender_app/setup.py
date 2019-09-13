@@ -1,5 +1,8 @@
 from setuptools import setup
 
+from golem_blender_app import constants
+
+
 def parse_requirements():
     """
     Parse requirements.txt file
@@ -26,7 +29,7 @@ install_requires, dependencies = parse_requirements()
 
 setup(
     name='Golem-Blender-App',
-    version='0.1.0',
+    version=constants.VERSION,
     url='https://github.com/golemfactory/blenderapp',
     maintainer='The Golem team',
     maintainer_email='tech@golem.network',
