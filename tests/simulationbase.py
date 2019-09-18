@@ -150,8 +150,10 @@ class SimulationBase(abc.ABC):
                 self._get_task_api_service,
                 task_id,
             )
-            subtask_ids = \
-                await task_lifecycle_util.compute_remaining_subtasks(task_id)
+            subtask_ids = await task_lifecycle_util.compute_remaining_subtasks(
+                task_id=task_id,
+                opaque_node_id='whatever'
+            )
             self._check_results(
                 task_lifecycle_util.req_task_outputs_dir,
                 task_params["format"],
@@ -163,8 +165,10 @@ class SimulationBase(abc.ABC):
                 await requestor_client.discard_subtasks(task_id, subtask_ids)
             assert discarded_subtask_ids == subtask_ids
             assert await requestor_client.has_pending_subtasks(task_id)
-            subtask_ids = \
-                await task_lifecycle_util.compute_remaining_subtasks(task_id)
+            subtask_ids = await task_lifecycle_util.compute_remaining_subtasks(
+                task_id=task_id,
+                opaque_node_id='whatever'
+            )
             self._check_results(
                 task_lifecycle_util.req_task_outputs_dir,
                 task_params["format"],
@@ -178,8 +182,10 @@ class SimulationBase(abc.ABC):
             )
             assert discarded_subtask_ids == subtask_ids[:1]
             assert await requestor_client.has_pending_subtasks(task_id)
-            subtask_ids = \
-                await task_lifecycle_util.compute_remaining_subtasks(task_id)
+            subtask_ids = await task_lifecycle_util.compute_remaining_subtasks(
+                task_id=task_id,
+                opaque_node_id='whatever'
+            )
             assert len(subtask_ids) == 1
             self._check_results(
                 task_lifecycle_util.req_task_outputs_dir,

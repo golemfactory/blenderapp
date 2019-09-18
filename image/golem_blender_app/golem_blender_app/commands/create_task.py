@@ -3,13 +3,18 @@ import zipfile
 
 from pathlib import Path
 
+from golem_blender_app import constants
 from golem_blender_app.commands import utils
-from golem_task_api import constants
+from golem_task_api import constants as task_api_constants, envs, structs
 
 
-def create_task(work_dir: Path, max_subtasks_count: int, params: dict) -> None:
-    task_inputs_dir = work_dir / constants.TASK_INPUTS_DIR
-    subtask_inputs_dir = work_dir / constants.SUBTASK_INPUTS_DIR
+def create_task(
+        work_dir: Path,
+        max_subtasks_count: int,
+        params: dict
+) -> structs.Task:
+    task_inputs_dir = work_dir / task_api_constants.TASK_INPUTS_DIR
+    subtask_inputs_dir = work_dir / task_api_constants.SUBTASK_INPUTS_DIR
 
     frame_count = len(utils.string_to_frames(params['frames']))
     if max_subtasks_count <= frame_count:
@@ -27,3 +32,8 @@ def create_task(work_dir: Path, max_subtasks_count: int, params: dict) -> None:
 
     with utils.get_db_connection(work_dir) as db:
         utils.init_tables(db, subtasks_count)
+
+    return envs.create_docker_cpu_task(
+        image=constants.DOCKER_IMAGE,
+        tag=constants.VERSION
+    )
