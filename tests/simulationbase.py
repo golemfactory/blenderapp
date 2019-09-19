@@ -2,10 +2,7 @@ from pathlib import Path
 from typing import List
 import abc
 import asyncio
-import contextlib
 import pytest
-import socket
-import time
 
 from golem_task_api import TaskApiService
 from golem_task_api.client import ShutdownException
@@ -217,23 +214,15 @@ class SimulationBase(abc.ABC):
 
     @pytest.mark.asyncio
     async def test_provider_shutdown_in_benchmark(self, task_lifecycle_util):
-        benchmark_defer = asyncio.ensure_future(self._simulate_cube_task(
+        benchmark_future = asyncio.ensure_future(self._simulate_cube_task(
             1,
             self._get_cube_params("1", resolution=[10000, 6000]),
             task_lifecycle_util,
             [1],
         ))
 
-        async def _shutdown_in_5s():
-            await asyncio.sleep(5.0)
-            await task_lifecycle_util.shutdown_provider()
-            return None
-        shutdown_defer = asyncio.ensure_future(_shutdown_in_5s())
-
-        done, _ = await asyncio.wait(
-            [shutdown_defer, benchmark_defer],
-            return_when=asyncio.FIRST_COMPLETED)
-        assert shutdown_defer in done
+        await asyncio.sleep(5.0)
+        await task_lifecycle_util.shutdown_provider()
 
         with pytest.raises(ShutdownException):
-            await benchmark_defer
+            await benchmark_future
