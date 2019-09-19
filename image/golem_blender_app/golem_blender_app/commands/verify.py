@@ -10,10 +10,13 @@ from golem_blender_app.commands.renderingtaskcollector import (
     RenderingTaskCollector
 )
 from golem_blender_app.verifier_tools import verificator
-from golem_task_api import constants
+from golem_task_api import constants, enums
 
 
-async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
+async def verify(
+        work_dir: Path,
+        subtask_id: str,
+) -> Tuple[enums.VerifyResult, Optional[str]]:
     task_inputs_dir = work_dir / constants.TASK_INPUTS_DIR
     results_dir = work_dir / constants.TASK_OUTPUTS_DIR
     subtask_outputs_dir = work_dir / constants.SUBTASK_OUTPUTS_DIR
@@ -58,7 +61,7 @@ async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
                 utils.SubtaskStatus.PENDING,
             )
             # TODO: provide some extra info why verification failed
-            return verdict, None
+            return enums.VerifyResult.FAILURE, None
         utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
@@ -69,7 +72,7 @@ async def verify(work_dir: Path, subtask_id: str) -> Tuple[bool, Optional[str]]:
             subtask_results_dir,
             results_dir,
         )
-        return verdict, None
+        return enums.VerifyResult.SUCCESS, None
 
 
 def _collect_results(
