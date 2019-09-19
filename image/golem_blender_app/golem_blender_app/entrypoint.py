@@ -8,6 +8,7 @@ from golem_task_api import (
     RequestorAppHandler,
     constants as api_constants,
     entrypoint,
+    enums,
     structs,
 )
 
@@ -36,7 +37,7 @@ class RequestorHandler(RequestorAppHandler):
             self,
             task_work_dir: Path,
             subtask_id: str,
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> Tuple[enums.VerifyResult, Optional[str]]:
         return await commands.verify(task_work_dir, subtask_id)
 
     async def discard_subtasks(
