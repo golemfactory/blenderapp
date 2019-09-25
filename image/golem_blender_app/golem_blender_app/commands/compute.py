@@ -36,7 +36,7 @@ async def compute(
         },
     )
 
-    output_filepath = Path(f'{subtask_id}.zip')
+    output_filepath = f'{subtask_id}.zip'
     with zipfile.ZipFile(work_dir / output_filepath, 'w') as zipf:
         for filename in os.listdir(result_dir):
             zipf.write(result_dir / filename, filename)
