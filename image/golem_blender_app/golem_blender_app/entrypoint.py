@@ -7,6 +7,7 @@ from golem_task_api import (
     ProviderAppHandler,
     RequestorAppHandler,
     constants as api_constants,
+    dirutils,
     entrypoint,
     enums,
     structs,
@@ -19,7 +20,7 @@ class RequestorHandler(RequestorAppHandler):
 
     async def create_task(
             self,
-            task_work_dir: Path,
+            task_work_dir: dirutils.RequestorTaskDir,
             max_subtasks_count: int,
             task_params: dict,
     ) -> structs.Task:
@@ -28,28 +29,28 @@ class RequestorHandler(RequestorAppHandler):
 
     async def next_subtask(
             self,
-            task_work_dir: Path,
+            task_work_dir: dirutils.RequestorTaskDir,
             opaque_node_id: str
     ) -> structs.Subtask:
         return commands.get_next_subtask(task_work_dir)
 
     async def verify(
             self,
-            task_work_dir: Path,
+            task_work_dir: dirutils.RequestorTaskDir,
             subtask_id: str,
     ) -> Tuple[enums.VerifyResult, Optional[str]]:
         return await commands.verify(task_work_dir, subtask_id)
 
     async def discard_subtasks(
             self,
-            task_work_dir: Path,
+            task_work_dir: dirutils.RequestorTaskDir,
             subtask_ids: List[str],
     ) -> List[str]:
         return commands.discard_subtasks(task_work_dir, subtask_ids)
 
     async def has_pending_subtasks(
             self,
-            task_work_dir: Path,
+            task_work_dir: dirutils.RequestorTaskDir,
     ) -> bool:
         return commands.has_pending_subtasks(task_work_dir)
 
@@ -60,7 +61,7 @@ class RequestorHandler(RequestorAppHandler):
 class ProviderHandler(ProviderAppHandler):
     async def compute(
             self,
-            task_work_dir: Path,
+            task_work_dir: dirutils.ProviderTaskDir,
             subtask_id: str,
             subtask_params: dict,
     ) -> Path:

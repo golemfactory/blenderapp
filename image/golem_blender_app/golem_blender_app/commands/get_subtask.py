@@ -1,13 +1,14 @@
-from pathlib import Path
 from typing import List
 import json
 
-from golem_task_api import structs
+from golem_task_api import dirutils, structs
 
 from golem_blender_app.commands import utils
 
 
-def get_next_subtask(work_dir: Path) -> structs.Subtask:
+def get_next_subtask(
+        work_dir: dirutils.RequestorTaskDir
+) -> structs.Subtask:
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
     with utils.get_db_connection(work_dir) as db:

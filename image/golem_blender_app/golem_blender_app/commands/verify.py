@@ -10,17 +10,13 @@ from golem_blender_app.commands.renderingtaskcollector import (
     RenderingTaskCollector
 )
 from golem_blender_app.verifier_tools import verificator
-from golem_task_api import constants, enums
+from golem_task_api import dirutils, enums
 
 
 async def verify(
-        work_dir: Path,
+        work_dir: dirutils.RequestorTaskDir,
         subtask_id: str,
 ) -> Tuple[enums.VerifyResult, Optional[str]]:
-    task_inputs_dir = work_dir / constants.TASK_INPUTS_DIR
-    results_dir = work_dir / constants.TASK_OUTPUTS_DIR
-    subtask_outputs_dir = work_dir / constants.SUBTASK_OUTPUTS_DIR
-
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
     with open(work_dir / f'subtask{subtask_id}.json', 'r') as f:
@@ -32,6 +28,7 @@ async def verify(
     subtask_output_dir = subtask_work_dir / 'output'
     subtask_output_dir.mkdir()
 
+    subtask_outputs_dir = work_dir.subtask_outputs_dir(subtask_id)
     with zipfile.ZipFile(subtask_outputs_dir / f'{subtask_id}.zip', 'r') as f:
         f.extractall(subtask_results_dir)
 
@@ -42,7 +39,7 @@ async def verify(
         verdict = await verificator.verify(
             list(map(lambda f: subtask_results_dir / f, os.listdir(subtask_results_dir))),  # noqa
             params['borders'],
-            task_inputs_dir / params['scene_file'],
+            work_dir.task_inputs_dir / params['scene_file'],
             params['resolution'],
             params['samples'],
             params['frames'],
@@ -70,7 +67,7 @@ async def verify(
             params,
             work_dir,
             subtask_results_dir,
-            results_dir,
+            work_dir.task_outputs_dir,
         )
         return enums.VerifyResult.SUCCESS, None
 

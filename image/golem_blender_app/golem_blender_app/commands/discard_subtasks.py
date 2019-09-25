@@ -1,11 +1,11 @@
-from pathlib import Path
 from typing import List
 
+from golem_task_api import dirutils
 from golem_blender_app.commands import utils
 
 
 def discard_subtasks(
-        work_dir: Path,
+        work_dir: dirutils.RequestorTaskDir,
         subtask_ids: List[str],
 ) -> List[str]:
     with utils.get_db_connection(work_dir) as db:

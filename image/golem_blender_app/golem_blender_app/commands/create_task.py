@@ -1,21 +1,17 @@
 import json
 import zipfile
 
-from pathlib import Path
 
 from golem_blender_app import constants
 from golem_blender_app.commands import utils
-from golem_task_api import constants as task_api_constants, envs, structs
+from golem_task_api import dirutils, envs, structs
 
 
 def create_task(
-        work_dir: Path,
+        work_dir: dirutils.RequestorTaskDir,
         max_subtasks_count: int,
         params: dict
 ) -> structs.Task:
-    task_inputs_dir = work_dir / task_api_constants.TASK_INPUTS_DIR
-    subtask_inputs_dir = work_dir / task_api_constants.SUBTASK_INPUTS_DIR
-
     frame_count = len(utils.string_to_frames(params['frames']))
     if max_subtasks_count <= frame_count:
         subtasks_count = max_subtasks_count
@@ -25,9 +21,9 @@ def create_task(
     with open(work_dir / 'task_params.json', 'w') as f:
         json.dump(params, f)
 
-    with zipfile.ZipFile(subtask_inputs_dir / '0.zip', 'w') as zipf:
+    with zipfile.ZipFile(work_dir.subtask_inputs_dir / '0.zip', 'w') as zipf:
         for resource in params['resources']:
-            resource_path = task_inputs_dir / resource
+            resource_path = work_dir.task_inputs_dir / resource
             zipf.write(resource_path, resource)
 
     with utils.get_db_connection(work_dir) as db:
