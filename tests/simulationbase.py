@@ -47,13 +47,13 @@ class SimulationBase(abc.ABC):
 
     @staticmethod
     def _check_results(
-            req_task_outputs_dir: Path,
+            task_outputs_dir: Path,
             output_format: str,
             expected_frames: List[int],
     ) -> None:
         for frame in expected_frames:
             filename = f'result{frame:04d}.{output_format}'
-            result_file = req_task_outputs_dir / filename
+            result_file = task_outputs_dir / filename
             assert result_file.exists()
 
     async def _simulate_cube_task(
@@ -63,14 +63,14 @@ class SimulationBase(abc.ABC):
         task_lifecycle_util: TaskLifecycleUtil,
         expected_frames: List[int],
     ):
-        await task_lifecycle_util.simulate_task(
+        task_dir = await task_lifecycle_util.simulate_task(
             self._get_task_api_service,
             max_subtasks_count,
             task_params,
             self._get_cube_resources(),
         )
         self._check_results(
-            task_lifecycle_util.req_task_outputs_dir,
+            task_dir.task_outputs_dir,
             task_params["format"],
             expected_frames,
         )
@@ -151,8 +151,10 @@ class SimulationBase(abc.ABC):
                 task_id=task_id,
                 opaque_node_id='whatever'
             )
+            task_dir = task_lifecycle_util.req_dir.task_dir(task_id)
+            task_outputs_dir = task_dir.task_outputs_dir
             self._check_results(
-                task_lifecycle_util.req_task_outputs_dir,
+                task_outputs_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -167,7 +169,7 @@ class SimulationBase(abc.ABC):
                 opaque_node_id='whatever'
             )
             self._check_results(
-                task_lifecycle_util.req_task_outputs_dir,
+                task_outputs_dir,
                 task_params["format"],
                 expected_frames,
             )
@@ -185,7 +187,7 @@ class SimulationBase(abc.ABC):
             )
             assert len(subtask_ids) == 1
             self._check_results(
-                task_lifecycle_util.req_task_outputs_dir,
+                task_outputs_dir,
                 task_params["format"],
                 expected_frames,
             )

@@ -37,6 +37,11 @@ jobs:
              docker --version || echo "no docker"
              blender --version || echo "no blender"
        - run:
+           name: Build docker image
+           command: |
+             docker build --tag blenderapp_test image
+           no_output_timeout: 15m
+       - run:
            name: Run tests
            command: |
              . .venv/bin/activate
