@@ -35,7 +35,6 @@ class SimulationBase(abc.ABC):
             "format": output_format,
             "resolution": resolution,
             "frames": frames,
-            "scene_file": "cube.blend",
             "resources": [
                 "cube.blend",
             ]

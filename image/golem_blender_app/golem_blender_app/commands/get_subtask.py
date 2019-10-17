@@ -24,6 +24,7 @@ def get_next_subtask(
             subtask_id,
         )
 
+    scene_file = utils.get_scene_file_from_resources(task_params['resources'])
     all_frames = utils.string_to_frames(task_params['frames'])
 
     frames, parts = _choose_frames(
@@ -36,7 +37,7 @@ def get_next_subtask(
 
     resources = ['0.zip']
     subtask_params = {
-        "scene_file": task_params['scene_file'],
+        "scene_file": scene_file,
         "resolution": task_params['resolution'],
         "use_compositing": False,
         "samples": 0,
