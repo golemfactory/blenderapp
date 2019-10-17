@@ -10,4 +10,4 @@ PyWavelets==1.0.2
 opencv-python==4.0.0.21
 
 typing
-golem_task_api==0.20.0
+golem_task_api==0.21.0

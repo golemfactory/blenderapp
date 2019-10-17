@@ -11,6 +11,7 @@ class SubtaskStatus(enum.Enum):
     COMPUTING = 'computing'
     VERIFYING = 'verifying'
     FINISHED = 'finished'
+    ABORTED = 'aborted'
 
 
 def get_db_connection(work_dir: Path):
