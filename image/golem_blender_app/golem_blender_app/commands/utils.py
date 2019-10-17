@@ -106,3 +106,10 @@ def gen_subtask_id(subtask_num: int) -> str:
 
 def get_subtask_num_from_id(subtask_id: str) -> int:
     return int(subtask_id.split('-')[0])
+
+
+def get_scene_file_from_resources(resources: List[str]) -> Optional[str]:
+    for resource in resources:
+        if resource.lower().endswith('.blend'):
+            return resource
+    return None

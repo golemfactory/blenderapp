@@ -18,13 +18,17 @@ def create_task(
     else:
         subtasks_count = max_subtasks_count // frame_count * frame_count
     params['subtasks_count'] = subtasks_count
-    with open(work_dir / 'task_params.json', 'w') as f:
-        json.dump(params, f)
+
+    if not utils.get_scene_file_from_resources(params['resources']):
+        raise RuntimeError("Scene file not found in resources")
 
     with zipfile.ZipFile(work_dir.subtask_inputs_dir / '0.zip', 'w') as zipf:
         for resource in params['resources']:
             resource_path = work_dir.task_inputs_dir / resource
             zipf.write(resource_path, resource)
+
+    with open(work_dir / 'task_params.json', 'w') as f:
+        json.dump(params, f)
 
     with utils.get_db_connection(work_dir) as db:
         utils.init_tables(db, subtasks_count)
