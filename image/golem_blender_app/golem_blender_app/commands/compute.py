@@ -16,7 +16,7 @@ async def compute(
     subtask_work_dir = work_dir.subtask_dir(subtask_id)
     resources_dir = work_dir / 'extracted_subtask_inputs'
     result_dir = subtask_work_dir / 'result'
-    result_dir.mkdir()
+    result_dir.mkdir(parents=True, exist_ok=True)
     for rid in params['resources']:
         with zipfile.ZipFile(work_dir.subtask_inputs_dir / rid, 'r') as zipf:
             zipf.extractall(resources_dir)
