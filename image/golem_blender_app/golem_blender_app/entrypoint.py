@@ -48,6 +48,12 @@ class RequestorHandler(RequestorAppHandler):
     ) -> List[str]:
         return commands.discard_subtasks(task_work_dir, subtask_ids)
 
+    async def abort_task(
+            self,
+            task_work_dir: dirutils.RequestorTaskDir
+    ) -> None:
+        return commands.abort_task(task_work_dir)
+
     async def has_pending_subtasks(
             self,
             task_work_dir: dirutils.RequestorTaskDir,
