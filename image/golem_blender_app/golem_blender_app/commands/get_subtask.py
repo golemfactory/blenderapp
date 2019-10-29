@@ -7,7 +7,8 @@ from golem_blender_app.commands import utils
 
 
 def get_next_subtask(
-        work_dir: dirutils.RequestorTaskDir
+        work_dir: dirutils.RequestorTaskDir,
+        subtask_id: str,
 ) -> structs.Subtask:
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
@@ -15,14 +16,11 @@ def get_next_subtask(
         subtask_num = utils.get_next_pending_subtask(db)
         if subtask_num is None:
             raise Exception('No available subtasks at the moment')
-        subtask_id = utils.gen_subtask_id(subtask_num)
         print(f'Subtask number: {subtask_num}, id: {subtask_id}')
-        utils.update_subtask(
+        utils.start_subtask(
             db,
             subtask_num,
-            utils.SubtaskStatus.COMPUTING,
-            subtask_id,
-        )
+            subtask_id)
 
     scene_file = utils.get_scene_file_from_resources(task_params['resources'])
     all_frames = utils.string_to_frames(task_params['frames'])
@@ -52,7 +50,6 @@ def get_next_subtask(
         json.dump(subtask_params, f)
 
     return structs.Subtask(
-        subtask_id=subtask_id,
         params=subtask_params,
         resources=resources,
     )

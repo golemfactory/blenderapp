@@ -30,9 +30,10 @@ class RequestorHandler(RequestorAppHandler):
     async def next_subtask(
             self,
             task_work_dir: dirutils.RequestorTaskDir,
+            subtask_id: str,
             opaque_node_id: str
     ) -> structs.Subtask:
-        return commands.get_next_subtask(task_work_dir)
+        return commands.get_next_subtask(task_work_dir, subtask_id)
 
     async def verify(
             self,

@@ -10,6 +10,8 @@ def discard_subtasks(
 ) -> List[str]:
     with utils.get_db_connection(work_dir) as db:
         for subtask_id in subtask_ids:
-            subtask_num = utils.get_subtask_num_from_id(subtask_id)
-            utils.update_subtask(db, subtask_num, utils.SubtaskStatus.PENDING)
+            utils.update_subtask_status(
+                db,
+                subtask_id,
+                utils.SubtaskStatus.ABORTED)
     return subtask_ids

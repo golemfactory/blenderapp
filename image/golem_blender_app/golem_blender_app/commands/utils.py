@@ -2,16 +2,19 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 import contextlib
 import enum
-import random
 import sqlite3
 
 
 class SubtaskStatus(enum.Enum):
-    PENDING = 'pending'
+    WAITING = None
     COMPUTING = 'computing'
     VERIFYING = 'verifying'
     FINISHED = 'finished'
+    FAILED = 'failed'
     ABORTED = 'aborted'
+
+    def is_computable(self):
+        return self in (self.WAITING, self.FAILED, self.ABORTED)
 
 
 def get_db_connection(work_dir: Path):
@@ -21,53 +24,127 @@ def get_db_connection(work_dir: Path):
 def init_tables(db, subtasks_count: int) -> None:
     with db:
         db.execute(
-            'CREATE TABLE subtask_status(num int, status text, unique_id text)')
-        values = \
-            ((x, SubtaskStatus.PENDING.value) for x in range(subtasks_count))
+            'CREATE TABLE subtasks( '
+            '   num int NOT NULL PRIMARY KEY, '
+            '   id text)')
+        db.execute(
+            'CREATE TABLE history( '
+            '   id text NOT NULL PRIMARY KEY, '
+            '   num int NOT NULL, '
+            '   status text NOT NULL, '
+            '   created DATETIME DEFAULT CURRENT_TIMESTAMP, '
+            '   FOREIGN KEY(num) REFERENCES subtasks(num))')
         db.executemany(
-            'INSERT INTO subtask_status(num, status) VALUES (?,?)',
-            values,
+            'INSERT INTO subtasks(num, id) '
+            'VALUES (?, ?)',
+            ((x, None) for x in range(subtasks_count)),
         )
 
 
-def update_subtask(
+def start_subtask(
         db,
         subtask_num: int,
-        status: SubtaskStatus,
-        unique_id: Optional[str] = None) -> None:
+        subtask_id: str,
+) -> None:
+    status = get_subtasks_statuses(db, [subtask_num])
+    if status and subtask_num in status:
+        if not status[subtask_num][0].is_computable():
+            raise RuntimeError(f"Subtask {subtask_num} already started")
+
     with db:
         db.execute(
-            'UPDATE subtask_status SET status = ? WHERE num = ?',
-            (status.value, subtask_num),
+            'INSERT INTO history(id, num, status) '
+            'VALUES (?, ?, ?)',
+            (subtask_id, subtask_num, SubtaskStatus.COMPUTING.value)
         )
-        if unique_id:
-            db.execute(
-                'UPDATE subtask_status SET unique_id = ? WHERE num = ?',
-                (unique_id, subtask_num),
-            )
+        db.execute(
+            'UPDATE subtasks '
+            'SET id = ? '
+            'WHERE num = ?',
+            (subtask_id, subtask_num)
+        )
+
+
+def discard_subtask(
+        db,
+        subtask_id: str,
+) -> None:
+    with db:
+        db.execute(
+            'UPDATE history '
+            'SET status = ? '
+            'WHERE id = ? ',
+            (SubtaskStatus.ABORTED.value,
+             subtask_id)
+        )
+        db.execute(
+            'UPDATE subtasks '
+            'SET id = NULL '
+            'WHERE id = ?',
+            (subtask_id,)
+        )
+
+
+def update_subtask_status(
+        db,
+        subtask_id: str,
+        status: SubtaskStatus
+) -> None:
+    with db:
+        db.execute(
+            'UPDATE history '
+            'SET status = ? '
+            'WHERE id = ?',
+            (status.value, subtask_id),
+        )
 
 
 def get_subtasks_statuses(
         db,
-        nums: List[int]) -> Dict[int, Tuple[SubtaskStatus, str]]:
+        nums: List[int]
+) -> Dict[int, Tuple[SubtaskStatus, str]]:
     set_format = ','.join(['?'] * len(nums))
+
     cursor = db.cursor()
     cursor.execute(
-        "SELECT num, status, unique_id FROM subtask_status WHERE num IN "
-        f"({set_format})",
-        (*nums,),
-    )
-    values = cursor.fetchall()
+        'SELECT S.num, H.status, S.id '
+        'FROM subtasks S '
+        'LEFT JOIN history H ON (H.id = S.id) '
+        f'WHERE S.num IN ({set_format})',
+        (*nums,))
+
     return {
-        v[0]: (SubtaskStatus(v[1]), v[2]) for v in values
+        row[0]: (SubtaskStatus(row[1]), row[2]) for row in cursor.fetchall()
     }
 
 
 def get_next_pending_subtask(db) -> Optional[int]:
     cursor = db.cursor()
     cursor.execute(
-        'SELECT num FROM subtask_status WHERE status = ? LIMIT 1',
-        (SubtaskStatus.PENDING.value,)
+        'SELECT S.num '
+        'FROM subtasks S '
+        'WHERE NOT EXISTS ('
+        '    SELECT H.id '
+        '    FROM history H '
+        '    WHERE H.id = S.id '
+        '    AND H.status NOT IN (?, ?)'
+        ') '
+        'ORDER BY S.num ASC '
+        'LIMIT 1',
+        (SubtaskStatus.ABORTED.value, SubtaskStatus.FAILED.value)
+    )
+    row = cursor.fetchone()
+    return row[0] if row else None
+
+
+def get_subtask_num(db, subtask_id: str) -> Optional[int]:
+    cursor = db.cursor()
+    cursor.execute(
+        'SELECT num '
+        'FROM history '
+        'WHERE id = ? '
+        'LIMIT 1',
+        (subtask_id,)
     )
     row = cursor.fetchone()
     return row[0] if row else None
@@ -99,14 +176,6 @@ def string_to_frames(s):
         else:
             raise ValueError("Wrong frame range")
     return sorted(frames)
-
-
-def gen_subtask_id(subtask_num: int) -> str:
-    return f'{subtask_num}-{random.random()}'
-
-
-def get_subtask_num_from_id(subtask_id: str) -> int:
-    return int(subtask_id.split('-')[0])
 
 
 def get_scene_file_from_resources(resources: List[str]) -> Optional[str]:

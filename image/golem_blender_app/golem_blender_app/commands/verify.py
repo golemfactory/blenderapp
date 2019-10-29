@@ -32,12 +32,16 @@ async def verify(
     with zipfile.ZipFile(subtask_outputs_dir / f'{subtask_id}.zip', 'r') as f:
         f.extractall(subtask_results_dir)
 
-    subtask_num = utils.get_subtask_num_from_id(subtask_id)
-
     with utils.get_db_connection(work_dir) as db:
-        utils.update_subtask(db, subtask_num, utils.SubtaskStatus.VERIFYING)
+        subtask_num = utils.get_subtask_num(db, subtask_id)
+        utils.update_subtask_status(
+            db,
+            subtask_id,
+            utils.SubtaskStatus.VERIFYING)
+        dir_contents = os.listdir(subtask_results_dir)
+
         verdict = await verificator.verify(
-            list(map(lambda f: subtask_results_dir / f, os.listdir(subtask_results_dir))),  # noqa
+            list(map(lambda r: subtask_results_dir / r, dir_contents)),
             params['borders'],
             work_dir.task_inputs_dir / params['scene_file'],
             params['resolution'],
@@ -52,14 +56,16 @@ async def verify(
         )
         print("Verdict:", verdict)
         if not verdict:
-            utils.update_subtask(
+            utils.update_subtask_status(
                 db,
-                subtask_num,
-                utils.SubtaskStatus.PENDING,
-            )
+                subtask_id,
+                utils.SubtaskStatus.FAILED)
             # TODO: provide some extra info why verification failed
             return enums.VerifyResult.FAILURE, None
-        utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
+        utils.update_subtask_status(
+            db,
+            subtask_id,
+            utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
             subtask_num,
