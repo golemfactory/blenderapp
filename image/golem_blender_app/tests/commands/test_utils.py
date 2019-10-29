@@ -7,11 +7,15 @@ import pytest
 from golem_blender_app.commands.utils import (
     discard_subtask,
     get_next_pending_subtask,
+    get_scene_file_from_resources,
+    get_subtask_num,
     get_subtasks_statuses,
     init_tables,
     start_subtask,
+    string_to_frames,
+    update_subtask_status,
     SubtaskStatus,
-    update_subtask_status)
+)
 
 
 @pytest.yield_fixture
@@ -24,7 +28,7 @@ def db(tmpdir):
         shutil.rmtree(tmpdir)
 
 
-class TestDatabase:
+class TestSubtaskUtils:
 
     def test_init_tables(self, db):
         subtask_count = 4
@@ -90,6 +94,27 @@ class TestDatabase:
         assert get_next_pending_subtask(db) == 0
         assert get_next_pending_subtask(db) == 0
 
+    def test_get_next_pending_subtask_statuses(self, db):
+        subtask_id = 'subtask'
+        init_tables(db, 1)
+
+        assert get_next_pending_subtask(db) == 0
+
+        start_subtask(db, 0, subtask_id)  # SubtaskStatus.COMPUTING
+        assert get_next_pending_subtask(db) is None
+
+        update_subtask_status(db, subtask_id, SubtaskStatus.VERIFYING)
+        assert get_next_pending_subtask(db) is None
+
+        update_subtask_status(db, subtask_id, SubtaskStatus.FINISHED)
+        assert get_next_pending_subtask(db) is None
+
+        update_subtask_status(db, subtask_id, SubtaskStatus.ABORTED)
+        assert get_next_pending_subtask(db) == 0
+
+        update_subtask_status(db, subtask_id, SubtaskStatus.FAILED)
+        assert get_next_pending_subtask(db) == 0
+
     def test_discard_subtask(self, db):
         subtask_id = 'subtask'
         init_tables(db, 1)
@@ -151,3 +176,64 @@ class TestDatabase:
         update_subtask_status(db, subtask_id, SubtaskStatus.VERIFYING)
         statuses = get_subtasks_statuses(db, [1])
         assert statuses[1] == (SubtaskStatus.WAITING, None)
+
+    def test_get_subtask_num(self, db):
+        init_tables(db, 2)
+
+        start_subtask(db, 0, 'subtask_0')
+        start_subtask(db, 1, 'subtask_1')
+
+        assert get_subtask_num(db, 'subtask_0') == 0
+        assert get_subtask_num(db, 'subtask_1') == 1
+
+        discard_subtask(db, 'subtask_0')
+        discard_subtask(db, 'subtask_1')
+
+        start_subtask(db, 0, 'subtask_2')
+        start_subtask(db, 1, 'subtask_3')
+
+        assert get_subtask_num(db, 'subtask_2') == 0
+        assert get_subtask_num(db, 'subtask_3') == 1
+
+
+class TestGetSceneFromResources:
+
+    def test_empty_resources(self):
+        resources = []
+        assert get_scene_file_from_resources(resources) is None
+
+    def test_invalid_resources(self):
+        resources = ['file.txt', 'path/to/file.bin']
+        assert get_scene_file_from_resources(resources) is None
+
+    def test(self):
+        resources = ['path/to/file.BLeNd', 'other.txt']
+        assert get_scene_file_from_resources(resources) == 'path/to/file.BLeNd'
+
+
+# Borrowed from core: tests.apps.rendering.task.test_framerenderingtask
+class TestStringToFrames:
+
+    def test_invalid_values(self):
+        with pytest.raises(ValueError):
+            string_to_frames('abc')
+        with pytest.raises(ValueError):
+            string_to_frames('0-15,5;abc')
+        with pytest.raises(ValueError):
+            string_to_frames('5-8;1-2-3')
+        with pytest.raises(ValueError):
+            string_to_frames('1-100,2,3')
+        with pytest.raises(AttributeError):
+            string_to_frames(0)
+
+    def test_values(self):
+        def values(*args):
+            return list(range(*args))
+
+        assert string_to_frames('1-4') == values(1, 5)
+        assert string_to_frames('1 - 4') == values(1, 5)
+        assert string_to_frames('5-8;1-3') == [1, 2, 3, 5, 6, 7, 8]
+        assert string_to_frames('0-15,5;23') == [0, 5, 10, 15, 23]
+        assert string_to_frames('0-9; 13-15') == values(10) + values(13, 16)
+        assert string_to_frames('0-15,5;23-25;26') == [
+            0, 5, 10, 15, 23, 24, 25, 26]
