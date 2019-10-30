@@ -38,10 +38,10 @@ async def verify(
             db,
             subtask_id,
             utils.SubtaskStatus.VERIFYING)
-        dir_contents = os.listdir(subtask_results_dir)
+        dir_contents = subtask_results_dir.iterdir()
 
         verdict = await verificator.verify(
-            list(map(lambda r: subtask_results_dir / r, dir_contents)),
+            [str(f) for f in dir_contents if f.is_file()],
             params['borders'],
             work_dir.task_inputs_dir / params['scene_file'],
             params['resolution'],
