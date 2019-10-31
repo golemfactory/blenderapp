@@ -1,3 +1,4 @@
+from .abort_subtask import abort_subtask
 from .abort_task import abort_task
 from .benchmark import benchmark
 from .compute import compute
