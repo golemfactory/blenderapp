@@ -24,18 +24,18 @@ def get_db_connection(work_dir: Path):
 def init_tables(db, subtasks_count: int) -> None:
     with db:
         db.execute(
-            'CREATE TABLE subtasks( '
+            'CREATE TABLE parts( '
             '   num int NOT NULL PRIMARY KEY, '
-            '   id text)')
+            '   subtask_id text)')
         db.execute(
-            'CREATE TABLE history( '
+            'CREATE TABLE subtasks( '
             '   id text NOT NULL PRIMARY KEY, '
-            '   num int NOT NULL, '
+            '   part_num int NOT NULL, '
             '   status text NOT NULL, '
             '   created DATETIME DEFAULT CURRENT_TIMESTAMP, '
-            '   FOREIGN KEY(num) REFERENCES subtasks(num))')
+            '   FOREIGN KEY(part_num) REFERENCES parts(num))')
         db.executemany(
-            'INSERT INTO subtasks(num, id) '
+            'INSERT INTO parts(num, subtask_id) '
             'VALUES (?, ?)',
             ((x, None) for x in range(subtasks_count)),
         )
@@ -53,35 +53,31 @@ def start_subtask(
 
     with db:
         db.execute(
-            'INSERT INTO history(id, num, status) '
+            'INSERT INTO subtasks(id, part_num, status) '
             'VALUES (?, ?, ?)',
             (subtask_id, subtask_num, SubtaskStatus.COMPUTING.value)
         )
         db.execute(
-            'UPDATE subtasks '
-            'SET id = ? '
+            'UPDATE parts '
+            'SET subtask_id = ? '
             'WHERE num = ?',
             (subtask_id, subtask_num)
         )
 
 
-def discard_subtask(
-        db,
-        subtask_id: str,
+def abort_task(
+        db
 ) -> None:
     with db:
         db.execute(
-            'UPDATE history '
-            'SET status = ? '
-            'WHERE id = ? ',
-            (SubtaskStatus.ABORTED.value,
-             subtask_id)
-        )
-        db.execute(
             'UPDATE subtasks '
-            'SET id = NULL '
-            'WHERE id = ?',
-            (subtask_id,)
+            'SET status = ? '
+            'WHERE status <> ? '
+            'AND id IN ('
+            '   SELECT subtask_id'
+            '   FROM parts'
+            ')',
+            (SubtaskStatus.ABORTED.value, SubtaskStatus.FINISHED.value)
         )
 
 
@@ -92,7 +88,7 @@ def update_subtask_status(
 ) -> None:
     with db:
         db.execute(
-            'UPDATE history '
+            'UPDATE subtasks '
             'SET status = ? '
             'WHERE id = ?',
             (status.value, subtask_id),
@@ -107,10 +103,10 @@ def get_subtasks_statuses(
 
     cursor = db.cursor()
     cursor.execute(
-        'SELECT S.num, H.status, S.id '
-        'FROM subtasks S '
-        'LEFT JOIN history H ON (H.id = S.id) '
-        f'WHERE S.num IN ({set_format})',
+        'SELECT P.num, S.status, P.subtask_id '
+        'FROM parts P '
+        'LEFT JOIN subtasks S ON (S.id = P.subtask_id) '
+        f'WHERE P.num IN ({set_format})',
         (*nums,))
 
     return {
@@ -121,15 +117,15 @@ def get_subtasks_statuses(
 def get_next_pending_subtask(db) -> Optional[int]:
     cursor = db.cursor()
     cursor.execute(
-        'SELECT S.num '
-        'FROM subtasks S '
+        'SELECT P.num '
+        'FROM parts P '
         'WHERE NOT EXISTS ('
-        '    SELECT H.id '
-        '    FROM history H '
-        '    WHERE H.id = S.id '
-        '    AND H.status NOT IN (?, ?)'
+        '    SELECT S.id '
+        '    FROM subtasks S '
+        '    WHERE S.id = P.subtask_id '
+        '    AND S.status NOT IN (?, ?)'
         ') '
-        'ORDER BY S.num ASC '
+        'ORDER BY P.num ASC '
         'LIMIT 1',
         (SubtaskStatus.ABORTED.value, SubtaskStatus.FAILED.value)
     )
@@ -140,8 +136,8 @@ def get_next_pending_subtask(db) -> Optional[int]:
 def get_subtask_num(db, subtask_id: str) -> Optional[int]:
     cursor = db.cursor()
     cursor.execute(
-        'SELECT num '
-        'FROM history '
+        'SELECT part_num '
+        'FROM subtasks '
         'WHERE id = ? '
         'LIMIT 1',
         (subtask_id,)

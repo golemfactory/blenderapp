@@ -5,7 +5,7 @@ import sqlite3
 import pytest
 
 from golem_blender_app.commands.utils import (
-    discard_subtask,
+    abort_task,
     get_next_pending_subtask,
     get_scene_file_from_resources,
     get_subtask_num,
@@ -34,18 +34,10 @@ class TestSubtaskUtils:
         subtask_count = 4
         init_tables(db, subtask_count)
 
-        cursor = db.cursor()
-        cursor.execute('SELECT num, id FROM subtasks ORDER BY num ASC')
-        rows = cursor.fetchall()
-
-        assert len(rows) == subtask_count
-        assert all(rows[i] == (i, None) for i in range(subtask_count))
-
-        cursor = db.cursor()
-        cursor.execute('SELECT * FROM history')
-        rows = cursor.fetchall()
-
-        assert not rows
+        statuses = get_subtasks_statuses(db, list(range(subtask_count)))
+        assert all(
+            statuses[i] == (SubtaskStatus.WAITING, None)
+            for i in range(subtask_count))
 
     def test_start_subtask(self, db):
         subtask_id = 'subtask'
@@ -56,13 +48,6 @@ class TestSubtaskUtils:
 
         assert statuses == {0: (SubtaskStatus.COMPUTING, subtask_id)}
         assert get_next_pending_subtask(db) is None
-
-        cursor = db.cursor()
-        cursor.execute('SELECT id, num, status FROM history')
-        rows = cursor.fetchall()
-
-        assert len(rows) == 1
-        assert rows[0] == (subtask_id, 0, SubtaskStatus.COMPUTING.value)
 
     def test_start_subtask_twice(self, db):
         init_tables(db, 1)
@@ -82,7 +67,7 @@ class TestSubtaskUtils:
         init_tables(db, 1)
 
         start_subtask(db, 0, 'subtask_1')
-        discard_subtask(db, 'subtask_1')
+        update_subtask_status(db, 'subtask_1', SubtaskStatus.ABORTED)
         start_subtask(db, 0, 'subtask_2')
 
         statuses = get_subtasks_statuses(db, [0])
@@ -115,7 +100,7 @@ class TestSubtaskUtils:
         update_subtask_status(db, subtask_id, SubtaskStatus.FAILED)
         assert get_next_pending_subtask(db) == 0
 
-    def test_discard_subtask(self, db):
+    def test_abort_subtask(self, db):
         subtask_id = 'subtask'
         init_tables(db, 1)
 
@@ -128,10 +113,25 @@ class TestSubtaskUtils:
         assert statuses == {0: (SubtaskStatus.COMPUTING, subtask_id)}
         assert get_next_pending_subtask(db) is None
 
-        discard_subtask(db, subtask_id)
+        update_subtask_status(db, subtask_id, SubtaskStatus.ABORTED)
         statuses = get_subtasks_statuses(db, [0])
-        assert statuses == {0: (SubtaskStatus.WAITING, None)}
+        assert statuses == {0: (SubtaskStatus.ABORTED, subtask_id)}
         assert get_next_pending_subtask(db) == 0
+
+    def test_abort_task(self, db):
+        subtask_count = 10
+        init_tables(db, subtask_count)
+
+        for i in range(subtask_count):
+            start_subtask(db, i, f'subtask_{i}')
+            status = get_subtasks_statuses(db, [i])[i]
+            assert status == (SubtaskStatus.COMPUTING, f'subtask_{i}')
+
+        abort_task(db)
+
+        for i in range(subtask_count):
+            status = get_subtasks_statuses(db, [i])[i]
+            assert status == (SubtaskStatus.ABORTED, f'subtask_{i}')
 
     def test_get_subtasks(self, db):
         subtask_count = 4
@@ -186,8 +186,8 @@ class TestSubtaskUtils:
         assert get_subtask_num(db, 'subtask_0') == 0
         assert get_subtask_num(db, 'subtask_1') == 1
 
-        discard_subtask(db, 'subtask_0')
-        discard_subtask(db, 'subtask_1')
+        update_subtask_status(db, 'subtask_0', SubtaskStatus.ABORTED)
+        update_subtask_status(db, 'subtask_1', SubtaskStatus.ABORTED)
 
         start_subtask(db, 0, 'subtask_2')
         start_subtask(db, 1, 'subtask_3')
