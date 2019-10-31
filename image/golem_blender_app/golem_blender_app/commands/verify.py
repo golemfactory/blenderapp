@@ -9,7 +9,7 @@ from golem_blender_app.commands import utils
 from golem_blender_app.commands.renderingtaskcollector import (
     RenderingTaskCollector
 )
-from golem_blender_app.verifier_tools import verificator
+from golem_blender_app.verifier_tools import verifier
 from golem_task_api import dirutils, enums
 
 
@@ -40,7 +40,7 @@ async def verify(
             utils.SubtaskStatus.VERIFYING)
         dir_contents = subtask_results_dir.iterdir()
 
-        verdict = await verificator.verify(
+        verdict = await verifier.verify(
             [str(f) for f in dir_contents if f.is_file()],
             params['borders'],
             work_dir.task_inputs_dir / params['scene_file'],
@@ -48,7 +48,6 @@ async def verify(
             params['samples'],
             params['frames'],
             params['output_format'],
-            'verify',
             mounted_paths={
                 'OUTPUT_DIR': str(subtask_output_dir),
                 'WORK_DIR': str(subtask_work_dir),

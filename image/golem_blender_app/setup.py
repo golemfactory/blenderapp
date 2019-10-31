@@ -38,6 +38,7 @@ setup(
         'golem_blender_app.commands',
         'golem_blender_app.render_tools',
         'golem_blender_app.verifier_tools',
+        'golem_blender_app.verifier_tools.file_extension',
     ],
     include_package_data=True,
     data_files=[

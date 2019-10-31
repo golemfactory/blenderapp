@@ -5,7 +5,7 @@ from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
-from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop, \
+from .crop_generator import FloatingPointBox, Crop, \
     Resolution
 from .file_extension.matcher import get_expected_extension
 from .image_metrics_calculator import calculate_metrics
@@ -109,6 +109,7 @@ def make_verdict(
         providers_result_images_paths: List[str],
         crops: List[Crop],
         reference_results: List[Dict[str, Any]],
+        output_dir: Path,
 ) -> None:
     verdict = True
 
@@ -123,13 +124,13 @@ def make_verdict(
 
         for crop, providers_result_image_path in zip(
                 crop_data['results'], providers_result_images_paths):
-            crop_path = get_crop_path(OUTPUT_DIR, crop)
+            crop_path = get_crop_path(output_dir, crop)
             results_path = calculate_metrics(
                 crop_path,
                 providers_result_image_path,
                 left, top,
                 metrics_output_filename=os.path.join(
-                    OUTPUT_DIR,
+                    output_dir,
                     crop_data['crop']['outfilebasename'] + "metrics.txt")
             )
             print("results_path: ", results_path)
@@ -138,8 +139,10 @@ def make_verdict(
             if data['Label'] != "TRUE":
                 verdict = False
 
-    with open(os.path.join(OUTPUT_DIR, 'verdict.json'), 'w') as f:
+    with open(os.path.join(output_dir, 'verdict.json'), 'w') as f:
         json.dump({'verdict': verdict}, f)
+
+    return verdict
 
 
 def get_crop_path(parent: str, filename: str) -> str:
@@ -169,7 +172,7 @@ def get_crop_path(parent: str, filename: str) -> str:
                             f'{crop_path}, {expected_path}')
 
 
-def verify(  # pylint: disable=too-many-arguments
+async def verify(  # pylint: disable=too-many-arguments
         subtask_file_paths: List[str],
         subtask_border: List[float],
         scene_file_path: str,
@@ -177,6 +180,7 @@ def verify(  # pylint: disable=too-many-arguments
         samples: int,
         frames: int,
         output_format: str,
+        mounted_paths: Dict[str, str],
         crops_count: int = 3,
         crops_borders: Optional[List[List[float]]] = None,
 ) -> None:
@@ -199,9 +203,6 @@ def verify(  # pylint: disable=too-many-arguments
                     values lists, representing crops borders
                     those will be used instead of random crops, if present.
     """
-    mounted_paths = dict()
-    mounted_paths["WORK_DIR"] = WORK_DIR
-    mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
     (crops,
      blender_render_parameters) = prepare_data_for_blender_verification(
@@ -216,9 +217,14 @@ def verify(  # pylint: disable=too-many-arguments
     )
     print("blender_render_params:")
     pprint(blender_render_parameters)
-    results = blender.render(blender_render_parameters, mounted_paths)
+    results = await blender.render(blender_render_parameters, mounted_paths)
 
     print("results:")
     pprint(results)
 
-    make_verdict(subtask_file_paths, crops, results)
+    return make_verdict(
+        subtask_file_paths,
+        crops,
+        results,
+        mounted_paths['OUTPUT_DIR'],
+    )
