@@ -43,25 +43,25 @@ def init_tables(db, subtasks_count: int) -> None:
 
 def start_subtask(
         db,
-        subtask_num: int,
+        part_num: int,
         subtask_id: str,
 ) -> None:
-    status = get_subtasks_statuses(db, [subtask_num])
-    if status and subtask_num in status:
-        if not status[subtask_num][0].is_computable():
-            raise RuntimeError(f"Subtask {subtask_num} already started")
+    status = get_subtasks_statuses(db, [part_num])
+    if status and part_num in status:
+        if not status[part_num][0].is_computable():
+            raise RuntimeError(f"Subtask {part_num} already started")
 
     with db:
         db.execute(
             'INSERT INTO subtasks(id, part_num, status) '
             'VALUES (?, ?, ?)',
-            (subtask_id, subtask_num, SubtaskStatus.COMPUTING.value)
+            (subtask_id, part_num, SubtaskStatus.COMPUTING.value)
         )
         db.execute(
             'UPDATE parts '
             'SET subtask_id = ? '
             'WHERE num = ?',
-            (subtask_id, subtask_num)
+            (subtask_id, part_num)
         )
 
 
@@ -133,7 +133,7 @@ def get_next_pending_subtask(db) -> Optional[int]:
     return row[0] if row else None
 
 
-def get_subtask_num(db, subtask_id: str) -> Optional[int]:
+def get_part_num(db, subtask_id: str) -> Optional[int]:
     cursor = db.cursor()
     cursor.execute(
         'SELECT part_num '

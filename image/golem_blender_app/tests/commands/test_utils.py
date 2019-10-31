@@ -7,8 +7,8 @@ import pytest
 from golem_blender_app.commands.utils import (
     abort_task,
     get_next_pending_subtask,
+    get_part_num,
     get_scene_file_from_resources,
-    get_subtask_num,
     get_subtasks_statuses,
     init_tables,
     start_subtask,
@@ -177,14 +177,14 @@ class TestSubtaskUtils:
         statuses = get_subtasks_statuses(db, [1])
         assert statuses[1] == (SubtaskStatus.WAITING, None)
 
-    def test_get_subtask_num(self, db):
+    def test_get_part_num(self, db):
         init_tables(db, 2)
 
         start_subtask(db, 0, 'subtask_0')
         start_subtask(db, 1, 'subtask_1')
 
-        assert get_subtask_num(db, 'subtask_0') == 0
-        assert get_subtask_num(db, 'subtask_1') == 1
+        assert get_part_num(db, 'subtask_0') == 0
+        assert get_part_num(db, 'subtask_1') == 1
 
         update_subtask_status(db, 'subtask_0', SubtaskStatus.ABORTED)
         update_subtask_status(db, 'subtask_1', SubtaskStatus.ABORTED)
@@ -192,8 +192,8 @@ class TestSubtaskUtils:
         start_subtask(db, 0, 'subtask_2')
         start_subtask(db, 1, 'subtask_3')
 
-        assert get_subtask_num(db, 'subtask_2') == 0
-        assert get_subtask_num(db, 'subtask_3') == 1
+        assert get_part_num(db, 'subtask_2') == 0
+        assert get_part_num(db, 'subtask_3') == 1
 
 
 class TestGetSceneFromResources:

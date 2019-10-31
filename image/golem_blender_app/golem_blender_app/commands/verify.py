@@ -33,7 +33,7 @@ async def verify(
         f.extractall(subtask_results_dir)
 
     with utils.get_db_connection(work_dir) as db:
-        subtask_num = utils.get_subtask_num(db, subtask_id)
+        part_num = utils.get_part_num(db, subtask_id)
         utils.update_subtask_status(
             db,
             subtask_id,
@@ -68,7 +68,7 @@ async def verify(
             utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
-            subtask_num,
+            part_num,
             task_params,
             params,
             work_dir,
@@ -80,7 +80,7 @@ async def verify(
 
 def _collect_results(
         db,
-        subtask_num: int,
+        part_num: int,
         task_params: dict,
         params: dict,
         work_dir: Path,
@@ -98,7 +98,7 @@ def _collect_results(
             )
         return
 
-    frame_id = subtask_num // parts
+    frame_id = part_num // parts
     frame = frames[frame_id]
     subtasks_nums = list(range(frame_id * parts, (frame_id + 1) * parts))
     subtasks_statuses = utils.get_subtasks_statuses(db, subtasks_nums)
