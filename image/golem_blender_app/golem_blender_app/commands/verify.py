@@ -32,12 +32,16 @@ async def verify(
     with zipfile.ZipFile(subtask_outputs_dir / f'{subtask_id}.zip', 'r') as f:
         f.extractall(subtask_results_dir)
 
-    subtask_num = utils.get_subtask_num_from_id(subtask_id)
-
     with utils.get_db_connection(work_dir) as db:
-        utils.update_subtask(db, subtask_num, utils.SubtaskStatus.VERIFYING)
+        part_num = utils.get_part_num(db, subtask_id)
+        utils.update_subtask_status(
+            db,
+            subtask_id,
+            utils.SubtaskStatus.VERIFYING)
+        dir_contents = subtask_results_dir.iterdir()
+
         verdict = await verificator.verify(
-            list(map(lambda f: subtask_results_dir / f, os.listdir(subtask_results_dir))),  # noqa
+            [str(f) for f in dir_contents if f.is_file()],
             params['borders'],
             work_dir.task_inputs_dir / params['scene_file'],
             params['resolution'],
@@ -52,17 +56,19 @@ async def verify(
         )
         print("Verdict:", verdict)
         if not verdict:
-            utils.update_subtask(
+            utils.update_subtask_status(
                 db,
-                subtask_num,
-                utils.SubtaskStatus.PENDING,
-            )
+                subtask_id,
+                utils.SubtaskStatus.FAILED)
             # TODO: provide some extra info why verification failed
             return enums.VerifyResult.FAILURE, None
-        utils.update_subtask(db, subtask_num, utils.SubtaskStatus.FINISHED)
+        utils.update_subtask_status(
+            db,
+            subtask_id,
+            utils.SubtaskStatus.FINISHED)
         _collect_results(
             db,
-            subtask_num,
+            part_num,
             task_params,
             params,
             work_dir,
@@ -74,7 +80,7 @@ async def verify(
 
 def _collect_results(
         db,
-        subtask_num: int,
+        part_num: int,
         task_params: dict,
         params: dict,
         work_dir: Path,
@@ -92,7 +98,7 @@ def _collect_results(
             )
         return
 
-    frame_id = subtask_num // parts
+    frame_id = part_num // parts
     frame = frames[frame_id]
     subtasks_nums = list(range(frame_id * parts, (frame_id + 1) * parts))
     subtasks_statuses = utils.get_subtasks_statuses(db, subtasks_nums)
