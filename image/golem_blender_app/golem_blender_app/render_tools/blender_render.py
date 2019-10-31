@@ -1,6 +1,6 @@
-import asyncio
 import os
 import stat
+import subprocess
 import sys
 from multiprocessing import cpu_count
 from typing import List
@@ -10,13 +10,9 @@ from . import scenefileeditor
 BLENDER_COMMAND = "blender"
 
 
-async def exec_cmd(cmd):
-    process = await asyncio.create_subprocess_exec(*cmd)
-    try:
-        return await process.wait()
-    except asyncio.CancelledError:
-        process.terminate()
-        raise
+def exec_cmd(cmd):
+    pc = subprocess.Popen(cmd)
+    return pc.wait()
 
 
 # pylint: disable=too-many-arguments
@@ -147,7 +143,7 @@ def gen_blender_command(parameters: dict,
     return cmd
 
 
-async def render(parameters: dict,
+def render(parameters: dict,
            mounted_paths: dict) -> List[dict]:
 
     crops = parameters["crops"]
@@ -178,7 +174,7 @@ async def render(parameters: dict,
         output_info.append(crop_info)
 
         print(cmd, file=sys.stderr)
-        exit_code = await exec_cmd(cmd)
+        exit_code = exec_cmd(cmd)
         if exit_code is not 0:
             sys.exit(exit_code)
 
