@@ -3,6 +3,7 @@ import os
 import stat
 import sys
 from multiprocessing import cpu_count
+from subprocess import SubprocessError
 from typing import List
 
 from . import scenefileeditor
@@ -180,7 +181,8 @@ async def render(parameters: dict,
         print(cmd, file=sys.stderr)
         exit_code = await exec_cmd(cmd)
         if exit_code is not 0:
-            sys.exit(exit_code)
+            raise SubprocessError(
+                f'Render process exited with code {exit_code}')
 
         crop_counter += 1
 

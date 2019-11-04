@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional
 import asyncio
 import sys
 
@@ -12,11 +12,15 @@ from golem_task_api import (
     enums,
     structs,
 )
+from golem_task_api.dirutils import RequestorTaskDir
 
 from golem_blender_app import commands
 
 
 class RequestorHandler(RequestorAppHandler):
+
+    def __init__(self) -> None:
+        self._running_verifications: Dict[str, asyncio.Future] = {}
 
     async def create_task(
             self,
@@ -40,7 +44,12 @@ class RequestorHandler(RequestorAppHandler):
             task_work_dir: dirutils.RequestorTaskDir,
             subtask_id: str,
     ) -> Tuple[enums.VerifyResult, Optional[str]]:
-        return await commands.verify(task_work_dir, subtask_id)
+        self._running_verifications[subtask_id] = asyncio.ensure_future(
+            commands.verify(task_work_dir, subtask_id))
+        try:
+            return await self._running_verifications[subtask_id]
+        finally:
+            del self._running_verifications[subtask_id]
 
     async def discard_subtasks(
             self,
@@ -53,7 +62,19 @@ class RequestorHandler(RequestorAppHandler):
             self,
             task_work_dir: dirutils.RequestorTaskDir
     ) -> None:
-        return commands.abort_task(task_work_dir)
+        commands.abort_task(task_work_dir)
+        for verification in self._running_verifications.values():
+            verification.cancel()
+
+    async def abort_subtask(
+            self,
+            task_work_dir: RequestorTaskDir,
+            subtask_id: str
+    ) -> None:
+        commands.abort_subtask(task_work_dir, subtask_id)
+        verification = self._running_verifications.get(subtask_id)
+        if verification:
+            verification.cancel()
 
     async def has_pending_subtasks(
             self,
