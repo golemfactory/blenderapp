@@ -1,23 +1,19 @@
-import asyncio
 import os
 import stat
 import sys
 from multiprocessing import cpu_count
 from subprocess import SubprocessError
+
+from golem_blender_app.process_tools import (
+    exec_cmd,
+    exec_and_monitor_cmd,
+    Usage,
+)
 from typing import List
 
 from . import scenefileeditor
 
 BLENDER_COMMAND = "blender"
-
-
-async def exec_cmd(cmd):
-    process = await asyncio.create_subprocess_exec(*cmd)
-    try:
-        return await process.wait()
-    except asyncio.CancelledError:
-        process.terminate()
-        raise
 
 
 # pylint: disable=too-many-arguments
@@ -148,8 +144,11 @@ def gen_blender_command(parameters: dict,
     return cmd
 
 
-async def render(parameters: dict,
-           mounted_paths: dict) -> List[dict]:
+async def render(
+        parameters: dict,
+        mounted_paths: dict,
+        monitor_usage: bool = False,
+) -> List[dict]:
 
     crops = parameters["crops"]
 
@@ -179,7 +178,11 @@ async def render(parameters: dict,
         output_info.append(crop_info)
 
         print(cmd, file=sys.stderr)
-        exit_code = await exec_cmd(cmd)
+        if monitor_usage:
+            exit_code, crop_info["usage"] = await exec_and_monitor_cmd(cmd)
+        else:
+            exit_code, crop_info["usage"] = await exec_cmd(cmd), Usage()
+
         if exit_code is not 0:
             raise SubprocessError(
                 f'Render process exited with code {exit_code}')
