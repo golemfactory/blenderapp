@@ -16,9 +16,7 @@ class Usage:
 def _monitor_pid(pid: int, usage: Usage):
     proc = Process(pid)
 
-    while not Executor.is_shutting_down():
-        if not proc.is_running():
-            return
+    while proc.is_running() and not Executor.is_shutting_down():
         usage.cpu_time = sum(proc.cpu_times())
         usage.mem_peak = max(usage.mem_peak, proc.memory_info().vms)
         time.sleep(0.5)
