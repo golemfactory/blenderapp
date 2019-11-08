@@ -60,7 +60,9 @@ def calculate_metrics(
         print("There were errors %r" % e, file=sys.stderr)
         compare_metrics['Label'] = VERIFICATION_FAIL
     providers_result_crop.save(
-        _generate_path_for_providers_result_crop(reference_crop_path)
+        os.path.join(
+            os.path.dirname(reference_crop_path),
+            _generate_path_for_providers_result_crop(reference_crop_path))
     )
     return ImgageMetrics(compare_metrics).write_to_file(
         metrics_output_filename

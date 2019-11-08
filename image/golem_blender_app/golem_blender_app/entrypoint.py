@@ -28,7 +28,7 @@ class RequestorHandler(RequestorAppHandler):
             max_subtasks_count: int,
             task_params: dict,
     ) -> structs.Task:
-        return commands.create_task(
+        return await commands.create_task(
             task_work_dir, max_subtasks_count, task_params)
 
     async def next_subtask(

@@ -6,7 +6,7 @@ from golem_blender_app.render_tools import blender_render
 
 async def benchmark(work_dir: Path) -> float:
     result_dir = work_dir / 'result'
-    result_dir.mkdir()
+    result_dir.mkdir(exist_ok=True)
 
     params = {
         'scene_file': '/golem/benchmark/bmw27_cpu.blend',
