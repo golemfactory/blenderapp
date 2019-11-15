@@ -1,15 +1,19 @@
 from pathlib import Path
+
 from typing import Tuple, Optional
 import json
 import shutil
 import zipfile
+
+from golem_task_api.apputils.task import SubtaskStatus
+from golem_task_api.apputils.task.database import DBTaskManager
+from golem_task_api import dirutils, enums
 
 from golem_blender_app.commands import utils
 from golem_blender_app.commands.renderingtaskcollector import (
     RenderingTaskCollector
 )
 from golem_blender_app.verifier_tools import verifier
-from golem_task_api import dirutils, enums
 
 
 async def verify(
@@ -31,53 +35,47 @@ async def verify(
     with zipfile.ZipFile(subtask_outputs_dir / f'{subtask_id}.zip', 'r') as f:
         f.extractall(subtask_results_dir)
 
-    with utils.get_db_connection(work_dir) as db:
-        part_num = utils.get_part_num(db, subtask_id)
-        utils.update_subtask_status(
-            db,
-            subtask_id,
-            utils.SubtaskStatus.VERIFYING)
-        dir_contents = subtask_results_dir.iterdir()
+    task_manager = DBTaskManager(work_dir)
+    part_num = task_manager.get_part_num(subtask_id)
+    task_manager.update_subtask_status(subtask_id, SubtaskStatus.VERIFYING)
+    dir_contents = subtask_results_dir.iterdir()
 
-        verdict = await verifier.verify(
-            [str(f) for f in dir_contents if f.is_file()],
-            params['borders'],
-            work_dir.task_inputs_dir / params['scene_file'],
-            params['resolution'],
-            params['samples'],
-            params['frames'],
-            params['output_format'],
-            mounted_paths={
-                'OUTPUT_DIR': str(subtask_output_dir),
-                'WORK_DIR': str(subtask_work_dir),
-            }
-        )
-        print("Verdict:", verdict)
-        if not verdict:
-            utils.update_subtask_status(
-                db,
-                subtask_id,
-                utils.SubtaskStatus.FAILED)
-            # TODO: provide some extra info why verification failed
-            return enums.VerifyResult.FAILURE, None
-        utils.update_subtask_status(
-            db,
+    verdict = await verifier.verify(
+        [str(f) for f in dir_contents if f.is_file()],
+        params['borders'],
+        work_dir.task_inputs_dir / params['scene_file'],
+        params['resolution'],
+        params['samples'],
+        params['frames'],
+        params['output_format'],
+        mounted_paths={
+            'OUTPUT_DIR': str(subtask_output_dir),
+            'WORK_DIR': str(subtask_work_dir),
+        }
+    )
+    print("Verdict:", verdict)
+    if not verdict:
+        task_manager.update_subtask_status(
             subtask_id,
-            utils.SubtaskStatus.FINISHED)
-        _collect_results(
-            db,
-            part_num,
-            task_params,
-            params,
-            work_dir,
-            subtask_results_dir,
-            work_dir.task_outputs_dir,
-        )
-        return enums.VerifyResult.SUCCESS, None
+            SubtaskStatus.FAILURE)
+        # TODO: provide some extra info why verification failed
+        return enums.VerifyResult.FAILURE, None
+
+    task_manager.update_subtask_status(subtask_id, SubtaskStatus.SUCCESS)
+    _collect_results(
+        task_manager,
+        part_num,
+        task_params,
+        params,
+        work_dir,
+        subtask_results_dir,
+        work_dir.task_outputs_dir,
+    )
+    return enums.VerifyResult.SUCCESS, None
 
 
 def _collect_results(
-        db,
+        task_manager: DBTaskManager,
         part_num: int,
         task_params: dict,
         params: dict,
@@ -99,9 +97,9 @@ def _collect_results(
     frame_id = part_num // parts
     frame = frames[frame_id]
     subtasks_nums = list(range(frame_id * parts, (frame_id + 1) * parts))
-    subtasks_statuses = utils.get_subtasks_statuses(db, subtasks_nums)
+    subtasks_statuses = task_manager.get_subtasks_statuses(subtasks_nums)
     all_finished = all([
-        s[0] == utils.SubtaskStatus.FINISHED for s in subtasks_statuses.values()
+        s[0] == SubtaskStatus.SUCCESS for s in subtasks_statuses.values()
     ])
     if not all_finished:
         return
