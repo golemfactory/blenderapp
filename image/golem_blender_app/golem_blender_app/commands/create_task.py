@@ -6,6 +6,7 @@ from golem_blender_app import constants
 from golem_blender_app.commands import utils
 from golem_blender_app.render_tools import blender_render
 from golem_task_api import dirutils, envs, structs
+from golem_task_api.apputils.task.database import DBTaskManager
 from golem_task_api.structs import Infrastructure
 
 
@@ -73,8 +74,7 @@ async def create_task(
     with open(work_dir / 'task_params.json', 'w') as f:
         json.dump(params, f)
 
-    with utils.get_db_connection(work_dir) as db:
-        utils.init_tables(db, subtasks_count)
+    DBTaskManager(work_dir).create_task(subtasks_count)
 
     return envs.create_docker_cpu_task(
         image=constants.DOCKER_IMAGE,

@@ -2,6 +2,7 @@ from typing import List
 import json
 
 from golem_task_api import dirutils, structs
+from golem_task_api.apputils.task.database import DBTaskManager
 
 from golem_blender_app.commands import utils
 
@@ -12,15 +13,13 @@ def get_next_subtask(
 ) -> structs.Subtask:
     with open(work_dir / 'task_params.json', 'r') as f:
         task_params = json.load(f)
-    with utils.get_db_connection(work_dir) as db:
-        part_num = utils.get_next_pending_subtask(db)
-        if part_num is None:
-            raise Exception('No available subtasks at the moment')
-        print(f'Part number: {part_num}, id: {subtask_id}')
-        utils.start_subtask(
-            db,
-            part_num,
-            subtask_id)
+
+    task_manager = DBTaskManager(work_dir)
+    part_num = task_manager.get_next_computable_part_num()
+    if part_num is None:
+        raise Exception('No available subtasks at the moment')
+    print(f'Part number: {part_num}, id: {subtask_id}')
+    task_manager.start_subtask(part_num, subtask_id)
 
     scene_file = utils.get_scene_file_from_resources(task_params['resources'])
     all_frames = utils.string_to_frames(task_params['frames'])

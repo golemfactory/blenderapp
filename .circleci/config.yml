@@ -45,8 +45,7 @@ jobs:
            name: Run tests
            command: |
              . .venv/bin/activate
-             python -m pytest image/golem_blender_app/tests
-             python -m pytest tests
+             python -m pytest
        - run:
            name: Inspect Docker image size
            command: |
