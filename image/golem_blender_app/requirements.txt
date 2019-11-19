@@ -1,15 +1,14 @@
 --extra-index-url https://builds.golem.network
 dataclasses==0.6
-scikit-learn==0.19.1
+golem_task_api==0.24.1
+numpy==1.15.4
+opencv-python==4.0.0.21
 OpenEXR==1.3.2
-scipy==1.2.1
-six==1.12.0
 peewee==3.11.2
 Pillow==5.1.0
-sklearn
-numpy==1.15.4
 psutil
 PyWavelets==1.0.2
-opencv-python==4.0.0.21
-
-golem_task_api==0.24.1
+scikit-learn==0.19.1
+scipy==1.2.1
+six==1.12.0
+sklearn
