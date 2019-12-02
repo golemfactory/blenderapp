@@ -3,20 +3,14 @@ import shutil
 
 import pytest
 
-from .simulationbase import (
-    SimulationBase,
-    task_lifecycle_util,
-)
-
-from golem_task_api import (
-    TaskApiService,
-)
+from golem_task_api import TaskApiService
 from golem_task_api.testutils import InlineTaskApiService
 
 from golem_blender_app.entrypoint import (
     ProviderHandler,
     RequestorHandler,
 )
+from .simulationbase import SimulationBase
 
 
 @pytest.mark.skipif(

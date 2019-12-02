@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 import json
 
 from golem_task_api import dirutils, structs
@@ -33,6 +33,8 @@ def get_next_subtask(
     max_y = (part_num % parts + 1) / parts
 
     resources = ['0.zip']
+    borders: List[float] = [0.0, min_y, 1.0, max_y]
+
     subtask_params = {
         "scene_file": scene_file,
         "resolution": task_params['resolution'],
@@ -40,8 +42,7 @@ def get_next_subtask(
         "samples": 0,
         "frames": frames,
         "output_format": task_params['format'],
-        "borders": [0.0, min_y, 1.0, max_y],
-
+        "borders": borders,
         "resources": resources,
     }
 
@@ -57,7 +58,8 @@ def get_next_subtask(
 def _choose_frames(
         frames: List[str],
         part_num: int,
-        total_subtasks: int) -> List[str]:
+        total_subtasks: int
+) -> Tuple[List[str], int]:
     if total_subtasks > len(frames):
         parts = total_subtasks // len(frames)
         return [frames[part_num // parts]], parts

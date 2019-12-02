@@ -2,12 +2,13 @@ import json
 import zipfile
 from copy import deepcopy
 
-from golem_blender_app import constants
-from golem_blender_app.commands import utils
-from golem_blender_app.render_tools import blender_render
 from golem_task_api import dirutils, envs, structs
 from golem_task_api.apputils.task.database import DBTaskManager
 from golem_task_api.structs import Infrastructure
+
+from golem_blender_app import constants
+from golem_blender_app.commands import utils
+from golem_blender_app.render_tools import blender_render
 
 
 async def test_task(

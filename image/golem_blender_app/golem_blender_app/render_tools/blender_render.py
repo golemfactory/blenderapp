@@ -3,13 +3,13 @@ import stat
 import sys
 from multiprocessing import cpu_count
 from subprocess import SubprocessError
+from typing import List
 
 from golem_blender_app.process_tools import (
     exec_cmd,
     exec_and_monitor_cmd,
     Usage,
 )
-from typing import List
 
 from . import scenefileeditor
 
@@ -167,8 +167,8 @@ async def render(
         results_list = list()
         for frame in parameters["frames"]:
             filename = crop["outfilebasename"] \
-                       + "{:04d}.".format(frame) \
-                       + output_format
+                + "{:04d}.".format(frame) \
+                + output_format
             results_list.append(filename)
 
         crop_info = dict()
@@ -183,7 +183,7 @@ async def render(
         else:
             exit_code, crop_info["usage"] = await exec_cmd(cmd), Usage()
 
-        if exit_code is not 0:
+        if exit_code != 0:
             raise SubprocessError(
                 f'Render process exited with code {exit_code}')
 
