@@ -26,7 +26,13 @@ jobs:
            command: |
              python3.6 -m venv .venv
              . .venv/bin/activate
-             pip install -r requirements.txt
+             pip install -r requirements.txt -r requirements-lint.txt
+             pip install -r image/golem_blender_app/requirements.txt
+       - run:
+           name: Run setup.py develop
+           command: |
+             . .venv/bin/activate
+             cd image/golem_blender_app/ && python setup.py develop && cd -
        - run:
            name: Check versions
            command: |
@@ -46,6 +52,16 @@ jobs:
            command: |
              . .venv/bin/activate
              python -m pytest
+       - run:
+           name: Run linters
+           command: |
+             . .venv/bin/activate
+             pylint -rn image/golem_blender_app/golem_blender_app
+             pylint -rn tests
+             flake8 image/golem_blender_app/golem_blender_app
+             flake8 tests
+             mypy image/golem_blender_app/golem_blender_app
+             mypy tests
        - run:
            name: Inspect Docker image size
            command: |
