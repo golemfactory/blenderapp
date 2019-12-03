@@ -59,6 +59,8 @@ async def verify(
         task_manager.update_subtask_status(
             subtask_id,
             SubtaskStatus.FAILURE)
+        # pylint: disable=fixme
+        # TODO: provide some extra info why verification failed
         return enums.VerifyResult.FAILURE, None
 
     task_manager.update_subtask_status(subtask_id, SubtaskStatus.SUCCESS)
