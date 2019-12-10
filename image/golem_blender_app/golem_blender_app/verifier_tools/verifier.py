@@ -1,11 +1,12 @@
 import asyncio
 import json
 import os
-from concurrent.futures import ThreadPoolExecutor
 from functools import partial
 from pathlib import Path
 from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
+
+from golem_task_api.threading import Executor
 
 from ..render_tools import blender_render as blender
 from .crop_generator import FloatingPointBox, Crop, \
@@ -224,15 +225,12 @@ async def verify(  # pylint: disable=too-many-arguments
     print("results:")
     pprint(results)
 
-    loop = asyncio.get_event_loop()
-    executor = ThreadPoolExecutor()
-    make_verdict_fn = partial(
+    verdict = await Executor.run(
         make_verdict,
         subtask_file_paths,
         crops,
         results,
         mounted_paths['OUTPUT_DIR'],
     )
-    verdict = await loop.run_in_executor(executor, make_verdict_fn)
 
     return verdict
