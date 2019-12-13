@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import Optional, List
 import abc
 import asyncio
 import pytest
@@ -7,12 +7,6 @@ import pytest
 from golem_task_api import TaskApiService
 from golem_task_api.client import ShutdownException
 from golem_task_api.testutils import TaskLifecycleUtil
-
-
-@pytest.fixture
-def task_lifecycle_util(tmpdir):
-    print('workdir:', tmpdir)
-    return TaskLifecycleUtil(Path(tmpdir))
 
 
 class SimulationBase(abc.ABC):
@@ -25,15 +19,16 @@ class SimulationBase(abc.ABC):
     ) -> TaskApiService:
         pass
 
-    @staticmethod
+    @classmethod
     def _get_cube_params(
+            cls,
             frames: str,
             output_format: str = "png",
-            resolution: List[int] = DEFAULT_RESOLUTION,
+            resolution: Optional[List[int]] = None,
     ):
         return {
             "format": output_format,
-            "resolution": resolution,
+            "resolution": resolution or cls.DEFAULT_RESOLUTION,
             "frames": frames,
             "resources": [
                 "cube.blend",

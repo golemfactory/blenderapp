@@ -1,9 +1,8 @@
-from golem_task_api.apputils.task import SubtaskStatus
-from golem_task_api.apputils.task.database import DBTaskManager
-
 from typing import List
 
 from golem_task_api import dirutils
+from golem_task_api.apputils.task import SubtaskStatus
+from golem_task_api.apputils.task.database import DBTaskManager
 
 
 def discard_subtasks(

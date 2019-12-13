@@ -40,6 +40,6 @@ async def compute(
     with zipfile.ZipFile(work_dir / output_filepath, 'w') as zipf:
         for filename in os.listdir(result_dir):
             zipf.write(result_dir / filename, filename)
-            # FIXME delete raw files ?
+            # FIXME delete raw files ?  # pylint: disable=fixme
 
-    return output_filepath
+    return Path(output_filepath)

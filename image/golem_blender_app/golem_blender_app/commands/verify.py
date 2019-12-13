@@ -32,8 +32,9 @@ async def verify(
     subtask_output_dir.mkdir()
 
     subtask_outputs_dir = work_dir.subtask_outputs_dir(subtask_id)
-    with zipfile.ZipFile(subtask_outputs_dir / f'{subtask_id}.zip', 'r') as f:
-        f.extractall(subtask_results_dir)
+    zip_file_path = subtask_outputs_dir / f'{subtask_id}.zip'
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_file:
+        zip_file.extractall(subtask_results_dir)
 
     task_manager = DBTaskManager(work_dir)
     part_num = task_manager.get_part_num(subtask_id)
@@ -41,7 +42,7 @@ async def verify(
     dir_contents = subtask_results_dir.iterdir()
 
     verdict = await verifier.verify(
-        [str(f) for f in dir_contents if f.is_file()],
+        [str(entry) for entry in dir_contents if entry.is_file()],
         params['borders'],
         work_dir.task_inputs_dir / params['scene_file'],
         params['resolution'],
@@ -58,6 +59,7 @@ async def verify(
         task_manager.update_subtask_status(
             subtask_id,
             SubtaskStatus.FAILURE)
+        # pylint: disable=fixme
         # TODO: provide some extra info why verification failed
         return enums.VerifyResult.FAILURE, None
 
@@ -109,11 +111,15 @@ def _collect_results(
         height=params['resolution'][1],
     )
     for i in subtasks_nums[::-1]:
-        collector.add_img_file(
-            str(work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results' / f'result{frame:04d}.{out_format}'),  # noqa
-        )
-    with collector.finalize() as image:
-        image.save_with_extension(
+        path = work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results' / \
+            f'result{frame:04d}.{out_format}'
+        collector.add_img_file(str(path))
+
+    image = collector.finalize()
+    if not image:
+        raise RuntimeError("No accepted image files")
+
+    with image as img:
+        img.save_with_extension(
             results_dir / f'result{frame:04d}',
-            out_format,
-        )
+            out_format)

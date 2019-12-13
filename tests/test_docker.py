@@ -1,9 +1,11 @@
 import os
 from pathlib import Path
 from sys import platform
-from typing import Tuple
+from typing import Dict, Optional, Tuple
 
 import docker
+from docker.errors import APIError
+from docker.models.containers import Container
 import pytest
 
 from golem_task_api import (
@@ -11,10 +13,7 @@ from golem_task_api import (
     constants as api_constants,
 )
 
-from .simulationbase import (
-    SimulationBase,
-    task_lifecycle_util,
-)
+from .simulationbase import SimulationBase
 
 TAG = 'blenderapp_test'
 
@@ -22,18 +21,18 @@ TAG = 'blenderapp_test'
 def is_docker_available():
     try:
         docker.from_env().ping()
-    except Exception:
+    except APIError:
         return False
     return True
 
 
 class DockerTaskApiService(TaskApiService):
     def __init__(self, work_dir: Path):
-        self._work_dir = work_dir
-        self._container = None
+        self._work_dir: Path = work_dir
+        self._container: Optional[Container] = None
 
     async def start(self, command: str, port: int) -> Tuple[str, int]:
-        ports = {}
+        ports: Dict[int, int] = {}
         if platform == 'darwin':
             ports = {port: port}
         self._container = docker.from_env().containers.run(
@@ -62,6 +61,8 @@ class DockerTaskApiService(TaskApiService):
         pass
 
     def running(self) -> bool:
+        if not self._container:
+            return False
         try:
             self._container.reload()
         except docker.errors.NotFound:
@@ -70,9 +71,9 @@ class DockerTaskApiService(TaskApiService):
         return self._container.status not in ['exited', 'error']
 
     async def wait_until_shutdown_complete(self) -> None:
-        print('Shutting down container with status: ', self._container.status)
-        if not self.running():
+        if not (self._container and self.running()):
             return
+        print('Shutting down container with status: ', self._container.status)
         logs = self._container.logs().decode('utf-8')
         print(logs)
         self._container.remove(force=True)

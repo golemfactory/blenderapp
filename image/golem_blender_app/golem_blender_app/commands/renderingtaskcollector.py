@@ -1,9 +1,10 @@
+# pylint: disable=no-member
 import logging
-import numpy
 import os
 from typing import Optional
 
 import cv2
+import numpy
 
 
 logger = logging.getLogger(__name__)
@@ -20,7 +21,7 @@ class OpenCVImgRepr:
     def __enter__(self):
         return self
 
-    def __exit__(self, type, value, traceback):
+    def __exit__(self, *_):
         pass
 
     def load_from_file(self, path):
@@ -30,7 +31,7 @@ class OpenCVImgRepr:
                 raise RuntimeError('cv2 read image \"{}\" as None'
                                    .format(path))
         except (cv2.error, RuntimeError) as e:
-            logger.error('Error reading image: {}'.format(str(e)))
+            logger.error('Error reading image: %r', e)
             raise OpenCVError('Cannot read image: {}'
                               .format(str(e)))
 
@@ -57,7 +58,7 @@ class OpenCVImgRepr:
         try:
             cv2.imwrite(path, self.img)
         except cv2.error as e:
-            logger.error('Error saving image: {}'.format(str(e)))
+            logger.error('Error saving image: %r', e)
             raise OpenCVError('Cannot save image {}: {}'.format(path,
                                                                 str(e)))
 
@@ -83,7 +84,7 @@ class RenderingTaskCollector(object):
         Connect all collected files and return final image
         :return OpenCV Image Representation or None
         """
-        if len(self.accepted_img_files) == 0:
+        if not self.accepted_img_files:
             return None
 
         return self.finalize_img()
