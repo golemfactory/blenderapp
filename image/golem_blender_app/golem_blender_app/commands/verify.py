@@ -105,16 +105,20 @@ def _collect_results(
         s[0] == SubtaskStatus.SUCCESS for s in subtasks_statuses.values()
     ])
     if not all_finished:
+        print('Not all finished, waiting for more results')
         return
 
+    print('All finished, collecting results')
     collector = RenderingTaskCollector(
         width=params['resolution'][0],
         height=params['resolution'][1],
     )
+    print(f'subtask_nums: {subtasks_nums}')
+    print(f'subtask_nums-filtered: {subtasks_nums[::-1]}')
     for i in subtasks_nums[::-1]:
         result_dir = work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results'
         result_img = result_dir / f'result{frame:04d}.{out_format}'
-        print(f'result_dir: {file}')
+        print(f'result_dir: {result_dir}')
         for file in result_dir.iterdir():
             print(f'result_candidate: {file}')
         print(f"result_img:{result_img.exists()}")
