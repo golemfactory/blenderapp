@@ -113,8 +113,6 @@ def _collect_results(
         width=params['resolution'][0],
         height=params['resolution'][1],
     )
-    print(f'subtask_nums: {subtasks_nums}')
-    print(f'subtask_nums-filtered: {subtasks_nums[::-1]}')
     for i in subtasks_nums[::-1]:
         result_dir = work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results'
         result_img = result_dir / f'result{frame:04d}.{out_format}'
