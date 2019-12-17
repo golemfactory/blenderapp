@@ -14,6 +14,8 @@ from golem_blender_app.commands.renderingtaskcollector import (
     RenderingTaskCollector
 )
 from golem_blender_app.verifier_tools import verifier
+from golem_blender_app.verifier_tools.file_extension.matcher import \
+    get_expected_extension
 
 
 async def verify(
@@ -86,7 +88,7 @@ def _collect_results(
         results_dir: Path) -> None:
     frames = utils.string_to_frames(task_params['frames'])
     frame_count = len(frames)
-    out_format = params['output_format']
+    out_format = get_expected_extension(params['output_format'])
     parts = task_params['subtasks_count'] // frame_count
     if parts <= 1:
         for frame in params['frames']:
@@ -104,16 +106,23 @@ def _collect_results(
         s[0] == SubtaskStatus.SUCCESS for s in subtasks_statuses.values()
     ])
     if not all_finished:
+        print('Not all finished, waiting for more results')
         return
 
+    print('All finished, collecting results')
     collector = RenderingTaskCollector(
         width=params['resolution'][0],
         height=params['resolution'][1],
     )
     for i in subtasks_nums[::-1]:
-        path = work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results' / \
-            f'result{frame:04d}.{out_format}'
-        collector.add_img_file(str(path))
+        result_dir = work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results'
+        result_img = result_dir / f'result{frame:04d}.{out_format}'
+        print(f'result_dir: {result_dir}')
+        for result_file in result_dir.iterdir():
+            print(f'result_candidate: {result_file}')
+        print(f"result_img:{result_img.exists()}")
+        print(f"result_img.size:{result_img.stat()}")
+        collector.add_img_file(str(result_img))
 
     image = collector.finalize()
     if not image:
