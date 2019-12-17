@@ -17,6 +17,7 @@ from golem_blender_app.verifier_tools import verifier
 from golem_blender_app.verifier_tools.file_extension.matcher import \
     get_expected_extension
 
+
 async def verify(
         work_dir: dirutils.RequestorTaskDir,
         subtask_id: str,
@@ -117,8 +118,8 @@ def _collect_results(
         result_dir = work_dir / f'subtask{subtasks_statuses[i][1]}' / 'results'
         result_img = result_dir / f'result{frame:04d}.{out_format}'
         print(f'result_dir: {result_dir}')
-        for file in result_dir.iterdir():
-            print(f'result_candidate: {file}')
+        for result_file in result_dir.iterdir():
+            print(f'result_candidate: {result_file}')
         print(f"result_img:{result_img.exists()}")
         print(f"result_img.size:{result_img.stat()}")
         collector.add_img_file(str(result_img))
