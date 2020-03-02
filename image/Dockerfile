@@ -2,16 +2,17 @@ FROM golemfactory/base:1.5 as base
 
 FROM base as blender
 
-ENV BLENDER_MAJOR 2.79
-ENV BLENDER_VERSION 2.79
-ENV GLIBC_VERSION 219
+ENV BLENDER_MAJOR 2.82
+ENV BLENDER_VERSION 2.82
+ENV BLENDER_OS linux64
+ENV BLENDER_BASENAME blender-$BLENDER_VERSION-$BLENDER_OS
 # The mirror is recently faster than the official site.
 # ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
-ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
+ENV BLENDER_ARCHIVE_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/$BLENDER_BASENAME.tar.xz
 
-RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / \
-  && mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender \
-  && rm -rf /blender/2.79/datafiles/locale
+RUN curl -Ls ${BLENDER_ARCHIVE_URL} | tar -xJv -C / \
+  && mv /$BLENDER_BASENAME /blender \
+  && rm -rf /blender/$BLENDER_VERSION/datafiles/locale
 
 
 FROM blender as builder
