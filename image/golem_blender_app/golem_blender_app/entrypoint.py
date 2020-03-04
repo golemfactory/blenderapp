@@ -17,6 +17,9 @@ from golem_task_api.dirutils import RequestorTaskDir
 from golem_blender_app import commands
 
 
+LOG_LEVEL_ARG = '--log-level'
+
+
 class RequestorHandler(RequestorAppHandler):
 
     def __init__(self) -> None:
@@ -105,11 +108,20 @@ async def main(
         requestor_handler: Optional[RequestorHandler] = None,
         provider_handler: Optional[ProviderHandler] = None,
 ):
+    log_level = None
+    if LOG_LEVEL_ARG in argv:
+        log_index = argv.index(LOG_LEVEL_ARG)
+        if len(argv) > log_index + 1:
+            log_level = argv[log_index + 1]
+        else:
+            print('WARNING: --log-level not passed, no level is set.')
     await api_main(
         work_dir,
         argv,
         requestor_handler=requestor_handler,
-        provider_handler=provider_handler)
+        provider_handler=provider_handler,
+        log_level=log_level,
+    )
 
 
 if __name__ == '__main__':

@@ -44,7 +44,7 @@ RUN pip install -r /tmp/requirements.txt
 # Use following lines to work with the unreleased task-api module
 # RUN apt-get install -y git
 # RUN pip uninstall -y golem-task-api
-# ENV GITCOMMIT=bfc2872c44d89132e43667d826b53e666c6453dc
+# ENV GITCOMMIT=9a7843f882d7333a9400f3030af4e922652363a0
 # RUN pip install git+https://github.com/golemfactory/task-api@$GITCOMMIT#subdirectory=python
 
 # Check to see that all libraries are available
