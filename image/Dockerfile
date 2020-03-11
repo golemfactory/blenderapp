@@ -2,13 +2,12 @@ FROM golemfactory/base:1.5 as base
 
 FROM base as blender
 
-ENV BLENDER_MAJOR 2.82
 ENV BLENDER_VERSION 2.82
 ENV BLENDER_OS linux64
 ENV BLENDER_BASENAME blender-$BLENDER_VERSION-$BLENDER_OS
 # The mirror is recently faster than the official site.
 # ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
-ENV BLENDER_ARCHIVE_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/$BLENDER_BASENAME.tar.xz
+ENV BLENDER_ARCHIVE_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_VERSION/$BLENDER_BASENAME.tar.xz
 
 RUN curl -Ls ${BLENDER_ARCHIVE_URL} | tar -xJv -C / \
   && mv /$BLENDER_BASENAME /blender \
