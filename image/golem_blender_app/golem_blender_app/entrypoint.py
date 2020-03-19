@@ -14,7 +14,7 @@ from golem_task_api import (
 )
 from golem_task_api.apputils.logging import (
     init_logging,
-    DEFAUTL_EXTERNAL_LOGGERS
+    DEFAULT_EXTERNAL_LOGGERS
 )
 from golem_task_api.dirutils import RequestorTaskDir, ProviderTaskDir
 
@@ -137,7 +137,7 @@ async def main(
     log_level = _extract_log_level(argv)
     init_logging(
         log_level_arg=log_level,
-        external_loggers=DEFAUTL_EXTERNAL_LOGGERS + ['PIL']
+        external_loggers=DEFAULT_EXTERNAL_LOGGERS + ['PIL']
     )
     await entrypoint.main(
         work_dir,
