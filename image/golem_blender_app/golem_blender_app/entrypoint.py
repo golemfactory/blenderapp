@@ -12,8 +12,8 @@ from golem_task_api import (
     enums,
     structs,
 )
-from golem_task_api.apputils.logging import (
-    init_logging,
+from golem_task_api.apputils.start_logging import (
+    from_arg,
     DEFAULT_EXTERNAL_LOGGERS
 )
 from golem_task_api.dirutils import RequestorTaskDir, ProviderTaskDir
@@ -135,7 +135,7 @@ async def main(
 ):
     # TODO: use click package to extract and validate cmd arguments #???
     log_level = _extract_log_level(argv)
-    init_logging(
+    from_arg(
         log_level_arg=log_level,
         external_loggers=DEFAULT_EXTERNAL_LOGGERS + ['PIL']
     )
