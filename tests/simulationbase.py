@@ -217,7 +217,7 @@ class SimulationBase(abc.ABC):
             [1],
         ))
 
-        await asyncio.sleep(5.0)
+        await asyncio.sleep(10.0)
         await task_lifecycle_util.shutdown_provider()
 
         with pytest.raises(ShutdownException):
