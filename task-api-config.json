@@ -1,0 +1,5 @@
+{
+   "requestor_env":"docker_cpu",
+   "max_benchmark_score":10000.0,
+   "market_strategy":"brass"
+}

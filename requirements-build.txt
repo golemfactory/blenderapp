@@ -1,9 +1,5 @@
+# git+https://github.com/golemfactory/task-api@master#egg=golem_task_api&subdirectory=python
 # I dunno why --extra-index-url is needed since, since it's present in the golem_blender_app
 # but it doesn't work without it
 --extra-index-url https://builds.golem.network
--e image/golem_blender_app
-
-docker==3.7.0
-pytest==3.6.3
-pytest-asyncio==0.10.0
-async-generator==1.10
+golem_task_api==0.24.5
