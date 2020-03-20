@@ -8,7 +8,7 @@ from golem_task_api import (
     RequestorAppHandler,
     constants as api_constants,
     dirutils,
-    entrypoint,
+    main as api_main,
     enums,
     structs,
 )
@@ -105,7 +105,7 @@ async def main(
         requestor_handler: Optional[RequestorHandler] = None,
         provider_handler: Optional[ProviderHandler] = None,
 ):
-    await entrypoint(
+    await api_main(
         work_dir,
         argv,
         requestor_handler=requestor_handler,
