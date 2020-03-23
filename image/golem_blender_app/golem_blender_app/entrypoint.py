@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 import asyncio
@@ -7,14 +8,22 @@ from golem_task_api import (
     ProviderAppHandler,
     RequestorAppHandler,
     constants as api_constants,
-    dirutils,
-    main as api_main,
+    entrypoint,
     enums,
     structs,
 )
-from golem_task_api.dirutils import RequestorTaskDir
+from golem_task_api.apputils.start_logging import (
+    from_arg,
+    DEFAULT_EXTERNAL_LOGGERS
+)
+from golem_task_api.dirutils import RequestorTaskDir, ProviderTaskDir
 
 from golem_blender_app import commands
+
+
+LOG_LEVEL_ARG = '--log-level'
+
+logger = logging.getLogger(__name__)
 
 
 class RequestorHandler(RequestorAppHandler):
@@ -24,7 +33,7 @@ class RequestorHandler(RequestorAppHandler):
 
     async def create_task(
             self,
-            task_work_dir: dirutils.RequestorTaskDir,
+            task_work_dir: RequestorTaskDir,
             max_subtasks_count: int,
             task_params: dict,
     ) -> structs.Task:
@@ -33,7 +42,7 @@ class RequestorHandler(RequestorAppHandler):
 
     async def next_subtask(
             self,
-            task_work_dir: dirutils.RequestorTaskDir,
+            task_work_dir: RequestorTaskDir,
             subtask_id: str,
             opaque_node_id: str
     ) -> structs.Subtask:
@@ -41,7 +50,7 @@ class RequestorHandler(RequestorAppHandler):
 
     async def verify(
             self,
-            task_work_dir: dirutils.RequestorTaskDir,
+            task_work_dir: RequestorTaskDir,
             subtask_id: str,
     ) -> Tuple[enums.VerifyResult, Optional[str]]:
         self._running_verifications[subtask_id] = asyncio.ensure_future(
@@ -53,14 +62,14 @@ class RequestorHandler(RequestorAppHandler):
 
     async def discard_subtasks(
             self,
-            task_work_dir: dirutils.RequestorTaskDir,
+            task_work_dir: RequestorTaskDir,
             subtask_ids: List[str],
     ) -> List[str]:
         return commands.discard_subtasks(task_work_dir, subtask_ids)
 
     async def abort_task(
             self,
-            task_work_dir: dirutils.RequestorTaskDir
+            task_work_dir: RequestorTaskDir
     ) -> None:
         commands.abort_task(task_work_dir)
         for verification in self._running_verifications.values():
@@ -78,7 +87,7 @@ class RequestorHandler(RequestorAppHandler):
 
     async def has_pending_subtasks(
             self,
-            task_work_dir: dirutils.RequestorTaskDir,
+            task_work_dir: RequestorTaskDir,
     ) -> bool:
         return commands.has_pending_subtasks(task_work_dir)
 
@@ -89,7 +98,7 @@ class RequestorHandler(RequestorAppHandler):
 class ProviderHandler(ProviderAppHandler):
     async def compute(
             self,
-            task_work_dir: dirutils.ProviderTaskDir,
+            task_work_dir: ProviderTaskDir,
             subtask_id: str,
             subtask_params: dict,
     ) -> Path:
@@ -99,17 +108,44 @@ class ProviderHandler(ProviderAppHandler):
         return await commands.benchmark(work_dir)
 
 
+def _extract_log_level(argv):
+    if LOG_LEVEL_ARG not in argv:
+        return None
+    log_key_i = argv.index(LOG_LEVEL_ARG)
+    log_val_i = log_key_i + 1
+    if len(argv) <= log_val_i:
+        # warning printed before loggers are configured
+        print(
+            'WARNING: --log-level value not passed, no level is set.',
+            flush=True
+        )
+        del argv[log_key_i]
+        return None
+    log_level = argv[log_val_i]
+
+    del argv[log_val_i]
+    del argv[log_key_i]
+    return log_level
+
+
 async def main(
         work_dir: Path,
         argv: List[str],
         requestor_handler: Optional[RequestorHandler] = None,
         provider_handler: Optional[ProviderHandler] = None,
 ):
-    await api_main(
+    # improvement: use click package to extract and validate cmd arguments #59
+    log_level = _extract_log_level(argv)
+    from_arg(
+        log_level_arg=log_level,
+        external_loggers=DEFAULT_EXTERNAL_LOGGERS + ['PIL']
+    )
+    await entrypoint.main(
         work_dir,
         argv,
         requestor_handler=requestor_handler,
-        provider_handler=provider_handler)
+        provider_handler=provider_handler,
+    )
 
 
 if __name__ == '__main__':

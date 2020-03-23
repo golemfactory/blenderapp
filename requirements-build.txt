@@ -2,4 +2,4 @@
 # I dunno why --extra-index-url is needed since, since it's present in the golem_blender_app
 # but it doesn't work without it
 --extra-index-url https://builds.golem.network
-golem_task_api==0.24.5
+golem_task_api==0.24.6
