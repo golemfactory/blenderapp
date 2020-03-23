@@ -133,7 +133,7 @@ async def main(
         requestor_handler: Optional[RequestorHandler] = None,
         provider_handler: Optional[ProviderHandler] = None,
 ):
-    # FIXME: use click package to extract and validate cmd arguments #???
+    # improvement: use click package to extract and validate cmd arguments #59
     log_level = _extract_log_level(argv)
     from_arg(
         log_level_arg=log_level,
