@@ -42,10 +42,10 @@ COPY golem_blender_app/requirements.txt /tmp
 RUN pip install -r /tmp/requirements.txt
 
 # Use following lines to work with the unreleased task-api module
-RUN apt-get install -y git
-RUN pip uninstall -y golem-task-api
-ENV GITCOMMIT=mwu/blenderapp-logging
-RUN pip install git+https://github.com/golemfactory/task-api@$GITCOMMIT#subdirectory=python
+#RUN apt-get install -y git
+#RUN pip uninstall -y golem-task-api
+#ENV GITCOMMIT=master
+#RUN pip install git+https://github.com/golemfactory/task-api@$GITCOMMIT#subdirectory=python
 
 # Check to see that all libraries are available
 # We don't need libgfortran

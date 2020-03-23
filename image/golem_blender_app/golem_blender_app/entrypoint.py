@@ -25,6 +25,7 @@ LOG_LEVEL_ARG = '--log-level'
 
 logger = logging.getLogger(__name__)
 
+
 class RequestorHandler(RequestorAppHandler):
 
     def __init__(self) -> None:
