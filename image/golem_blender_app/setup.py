@@ -2,6 +2,17 @@
 from setuptools import setup
 
 from golem_blender_app import constants
+from golem_task_api.apputils.app_definition import BuildAppDefCommand
+
+
+class BlenderBuildAppDefCommand(BuildAppDefCommand):
+    def run(self):
+        self.config['name'] = constants.DOCKER_IMAGE
+        self.config['requestor_prereq'] = {
+            "image": constants.DOCKER_IMAGE,
+            "tag": constants.VERSION
+        }
+        super().run()
 
 
 def parse_requirements():
@@ -26,13 +37,16 @@ def parse_requirements():
             requirements.append(line)
     return requirements, dependency_links
 
+
 install_requires, dependencies = parse_requirements()
 
 setup(
     name='Golem-Blender-App',
     version=constants.VERSION,
+    description='Rendering with Blender, the free and open source 3D creation suite',
+    license='GPLv3',
     url='https://github.com/golemfactory/blenderapp',
-    maintainer='The Golem team',
+    maintainer='Golem Factory GmbH',
     maintainer_email='tech@golem.network',
     packages=[
         'golem_blender_app',
@@ -52,4 +66,7 @@ setup(
     python_requires='>=3.6',
     install_requires=install_requires,
     dependency_links=dependencies,
+    cmdclass={
+        'build_app_def': BlenderBuildAppDefCommand,
+    }
 )
