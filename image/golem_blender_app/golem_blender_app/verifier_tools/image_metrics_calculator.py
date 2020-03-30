@@ -130,7 +130,6 @@ def get_file_extension_lowercase(file_path):
 
 
 def check_exr_multilayer(image_path):
-    # Might exit()
     image_path = Path(image_path)
     try:
         channels = OpenEXR.InputFile(str(image_path)).header()['channels']
