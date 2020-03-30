@@ -141,7 +141,7 @@ def check_exr_multilayer(image_path):
             sys.stderr.write(f"Broken file stats: {image_path.stat()}\n")
         raise
     if 'RenderLayer.Combined.R' in channels:
-        sys.exit("There is no support for OpenEXR multilayer")
+        raise RuntimeError("There is no support for OpenEXR multilayer")
 
 
 def convert_to_png_if_needed(image_path):
