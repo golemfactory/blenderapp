@@ -7,12 +7,12 @@ jobs:
        - run:
            name: Install Blender
            environment:
-            BLENDER_MAJOR: 2.79
-            BLENDER_VERSION: 2.79
-            GLIBC_VERSION: 219
+            BLENDER_VERSION: 2.82
+            BLENDER_BASENAME: blender-2.82-linux64
            command: |
-             curl -Ls http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2 | sudo tar -xjv -C /opt/
-             sudo ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64/blender /usr/local/bin/blender
+             echo $BLENDER_BASENAME
+             curl -Ls http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_VERSION/$BLENDER_BASENAME.tar.xz | sudo tar -xJv -C /opt/
+             sudo ln -s /opt/${BLENDER_BASENAME}/blender /usr/local/bin/blender
        - run:
            name: Install Python3.6
            command: |

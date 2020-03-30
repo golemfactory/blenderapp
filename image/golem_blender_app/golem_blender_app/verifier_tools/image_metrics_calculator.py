@@ -129,15 +129,27 @@ def get_file_extension_lowercase(file_path):
     return os.path.splitext(file_path)[1][1:].lower()
 
 
+def check_exr_multilayer(image_path):
+    image_path = Path(image_path)
+    try:
+        channels = OpenEXR.InputFile(str(image_path)).header()['channels']
+    except OSError:
+        if image_path.exists():
+            with image_path.open('rb') as f:
+                sys.stderr.write(f"Broken file contents: {f.read(50)!r}\n")
+            sys.stderr.write(f"Broken file stats: {image_path.stat()}\n")
+        raise
+    if 'RenderLayer.Combined.R' in channels:
+        raise RuntimeError("There is no support for OpenEXR multilayer")
+
+
 def convert_to_png_if_needed(image_path):
     print(f'convert_to_png_if_needed({image_path})')
     extension = get_file_extension_lowercase(image_path)
     name = os.path.basename(image_path)
     file_name = os.path.join("/tmp/", name)
     if extension == "exr":
-        channels = OpenEXR.InputFile(str(image_path)).header()['channels']
-        if 'RenderLayer.Combined.R' in channels:
-            sys.exit("There is no support for OpenEXR multilayer")
+        check_exr_multilayer(image_path)
         convert_exr_to_png(image_path, file_name)
     elif extension == "tga":
         convert_tga_to_png(image_path, file_name)

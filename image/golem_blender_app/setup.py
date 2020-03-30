@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from setuptools import setup
 
 from golem_blender_app import constants
