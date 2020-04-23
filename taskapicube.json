@@ -1,0 +1,9 @@
+{
+    "format": "png",
+    "resolution": [500, 300],
+    "frames": "1",
+    "scene_file": "cube.blend",
+    "resources": [
+        "cube.blend"
+    ]
+}
