@@ -1,8 +1,12 @@
+import asyncio
 import json
 import os
+from functools import partial
 from pathlib import Path
 from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
+
+from golem_task_api.threading import Executor
 
 from ..render_tools import blender_render as blender
 from .crop_generator import FloatingPointBox, Crop, \
@@ -11,9 +15,9 @@ from .file_extension.matcher import get_expected_extension
 from .image_metrics_calculator import calculate_metrics
 
 
-def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
+def get_crop_with_id(crop_id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
-        if crop.id == id:
+        if crop.id == crop_id:
             return crop
     return None
 
@@ -204,8 +208,7 @@ async def verify(  # pylint: disable=too-many-arguments
                     those will be used instead of random crops, if present.
     """
 
-    (crops,
-     blender_render_parameters) = prepare_data_for_blender_verification(
+    (crops, blender_render_parameters) = prepare_data_for_blender_verification(
         subtask_border,
         scene_file_path,
         resolution,
@@ -222,9 +225,12 @@ async def verify(  # pylint: disable=too-many-arguments
     print("results:")
     pprint(results)
 
-    return make_verdict(
+    verdict = await Executor.run(
+        make_verdict,
         subtask_file_paths,
         crops,
         results,
         mounted_paths['OUTPUT_DIR'],
     )
+
+    return verdict
